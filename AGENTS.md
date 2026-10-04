@@ -93,7 +93,7 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 2. Scratch and debug scripts go in your own temp directory, never the project root.
 3. Don't change the data contract or a user decision without the user.
 4. Before saying work is done, run:
-   - `python -m unittest discover -s tests` (123 tests; uses a temporary copy of the DB; live-AI
+   - `python -m unittest discover -s tests` (126 tests; uses a temporary copy of the DB; live-AI
      tests skip themselves with a reason when the model can't load)
    - `python tools/verify_sections.py` (must exit 0)
 

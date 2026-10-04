@@ -86,7 +86,7 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 | `GROQ_API_KEY` | — | ใช้ Groq (ฟรีภายใต้โควตา) |
 | `LEGAL_AI_LLM_PROVIDER` | `auto` | `auto` / `groq` / `ollama` (`anthropic` = Claude แบบเสียเงิน ต้องตั้งเอง) |
 | `LEGAL_AI_GROQ_MODEL` | `openai/gpt-oss-120b` | โมเดล Groq เริ่มต้น |
-| `LEGAL_AI_GROQ_MAX_TOKENS` | `4096` | เพดาน tokens ของคำตอบ Groq |
+| `LEGAL_AI_GROQ_MAX_TOKENS` | `8000` | เพดาน tokens (การคิด + คำตอบ) ของ Groq |
 | `LEGAL_AI_CLAUDE_MODEL` | `claude-opus-5-5` | โมเดล Claude (โหมดตอบคำถาม) |
 | `LEGAL_AI_CLAUDE_MODEL_SUMMARY` | ค่าเดียวกับ `LEGAL_AI_CLAUDE_MODEL` | โมเดล Claude โหมดสรุป/อธิบาย |
 | `LEGAL_AI_CLAUDE_EFFORT` | `high` | ระดับ effort ของ Claude (โหมดตอบคำถาม) |

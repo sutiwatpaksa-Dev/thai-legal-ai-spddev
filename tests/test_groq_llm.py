@@ -66,6 +66,21 @@ class TestCallGroq(unittest.TestCase):
         self.assertEqual(req["model"], "qwen/qwen3.8-27b")
         self.assertIs(req["response_format"]["json_schema"]["schema"], claude_llm.SUMMARY_SCHEMA)
 
+    def test_gpt_oss_thinks_at_low_effort_qwen_unchanged(self):
+        """ม.180 สรุปไม่จบเพราะ 'การคิด' ระดับ medium กิน tokens หมด — GPT-OSS ต้องส่ง reasoning_effort=low"""
+        for model in ("openai/gpt-oss-120b", "openai/gpt-oss-20b"):
+            _, req = self.call(fake_completion({}), summary=True, model=model)
+            self.assertEqual(req["reasoning_effort"], "low")
+        _, req = self.call(fake_completion({}), summary=True, model="qwen/qwen3.8-27b")
+        self.assertNotIn("reasoning_effort", req)
+        self.assertGreaterEqual(req["max_completion_tokens"], 8000)
+
+    def test_groq_truncation_error_is_too_long(self):
+        class BadRequestError(Exception):
+            pass
+        e = BadRequestError("Error code: 400 - max completion tokens reached before generating a valid document")
+        self.assertEqual(qa_module.classify_llm_error(e)[0], "LLM_TOO_LONG")
+
     def test_unknown_model_rejected(self):
         with self.assertRaises(ValueError):
             self.call(fake_completion({}), model="llama-something")
@@ -125,6 +140,16 @@ class TestGroqApi(unittest.TestCase):
         self.assertTrue(llm["configured"])
         self.assertEqual([m["id"] for m in llm["models"]], list(groq_llm.GROQ_MODELS))
         self.assertTrue(all(m["description"] for m in llm["models"]))
+
+    def test_one_model_failing_does_not_mark_ai_down(self):
+        """โมเดลหนึ่งตอบยาวเกิน ไม่ใช่เหตุให้ป้ายสถานะขึ้น 'AI ใช้งานไม่ได้' (โมเดลอื่นยังใช้ได้)"""
+        failed = {"status": "LLM_ERROR", "error_code": "LLM_TOO_LONG", "error": "x", "citations": [],
+                  "guardrails": {}, "retrieved_statutes": [], "provider": "groq", "model": "openai/gpt-oss-20b"}
+        app_module._set_health(True, source="ask")
+        with mock.patch.object(app_module.qa, "ask", return_value=failed), \
+             mock.patch.object(app_module.db, "save_analysis", return_value=1):
+            r = self.client.post("/api/ask", json={"question": "สรุปมาตรา 180"}).json()
+        self.assertIs(r["llm_health"]["ok"], True)
 
     def test_unknown_model_is_400(self):
         with mock.patch.object(qa_module, "LLM_PROVIDER", "groq"):

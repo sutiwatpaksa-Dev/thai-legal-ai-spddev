@@ -105,9 +105,11 @@ def ask_question(req: AskRequest):
     if req.model and qa_module.active_provider() == "groq" and req.model not in groq_llm.GROQ_MODELS:
         raise HTTPException(status_code=400, detail="โมเดลนี้ไม่อยู่ในรายการที่เลือกได้")
     result = qa.ask(question, mode=req.mode, model=req.model or "")
-    # ผลการเรียกจริงคือสัญญาณสุขภาพที่เชื่อถือได้ที่สุด
+    # ผลการเรียกจริงคือสัญญาณสุขภาพที่เชื่อถือได้ที่สุด — แต่ปัญหาเฉพาะคำถาม/โมเดล
+    # (ตอบยาวเกิน, เกินโควตาชั่วคราว ฯลฯ) ไม่ได้แปลว่า AI ทั้งระบบใช้งานไม่ได้
     if result["status"] == "LLM_ERROR":
-        _set_health(False, result.get("error_code"), result.get("error", ""), source="ask")
+        if result.get("error_code") in SERVICE_DOWN_CODES:
+            _set_health(False, result.get("error_code"), result.get("error", ""), source="ask")
     elif result.get("guardrails"):   # มีผลตรวจ = โมเดลตอบกลับมาจริง
         _set_health(True, source="ask")
     result["llm_health"] = dict(_llm_health)
@@ -136,6 +138,8 @@ def search_statutes(req: SearchRequest):
 # อัปเดตจากผลการเรียกจริง (/api/ask) และจากการ probe โมเดล — ไม่ใช่แค่ดูว่า server เปิดอยู่
 
 HEALTH_TTL_SECONDS = 60
+# รหัส error ที่แปลว่า AI ใช้ไม่ได้ทั้งระบบ (ไม่ขึ้นกับคำถามหรือโมเดลที่เลือก)
+SERVICE_DOWN_CODES = {"LLM_AUTH", "LLM_UNREACHABLE", "LLM_OUT_OF_MEMORY"}
 PROBE_TIMEOUT_SECONDS = 120   # ครั้งแรกต้องโหลดโมเดลเข้าหน่วยความจำ
 _health_lock = threading.Lock()
 _llm_health = {"ok": None, "error_code": None, "message": "ยังไม่ได้ตรวจ", "checked_at": None, "source": None}

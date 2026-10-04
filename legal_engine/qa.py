@@ -48,6 +48,7 @@ LLM_ERROR_MESSAGES = {
     "LLM_AUTH": "ยืนยันตัวตนกับบริการ AI ไม่ผ่าน — ตรวจการตั้งค่า API key",
     "LLM_REFUSED": "บริการ AI ปฏิเสธคำขอนี้",
     "LLM_RATE_LIMIT": "ใช้งาน AI เกินโควตาชั่วคราว — รอสักครู่แล้วลองใหม่ หรือเลือกโมเดลอื่น",
+    "LLM_TOO_LONG": "AI ตอบยาวเกินขีดจำกัด — ลองเลือกโมเดลอื่น หรือพิมพ์ \"แบบสั้น\" ในคำถาม",
     "LLM_TIMEOUT": "บริการ AI ตอบช้าเกินกำหนด",
     "LLM_BAD_OUTPUT": "AI ตอบกลับในรูปแบบที่ระบบอ่านไม่ได้",
     "LLM_FAILED": "บริการ AI ขัดข้อง",
@@ -63,6 +64,8 @@ def classify_llm_error(e: Exception) -> Tuple[str, str]:
         code = "LLM_OUT_OF_MEMORY"
     elif isinstance(e, groq_llm.GroqKeyMissing):
         code = "LLM_AUTH"
+    elif any(k in text for k in ("max completion tokens", "max_completion_tokens", "max_tokens")):
+        code = "LLM_TOO_LONG"
     elif "ratelimit" in name.lower() or "429" in text:
         code = "LLM_RATE_LIMIT"
     elif "authentication" in name.lower() or "permissiondenied" in name.lower() or "401" in text:
