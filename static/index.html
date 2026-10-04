@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thai Legal AI | คลังตัวบทกฎหมายและถาม-ตอบ</title>
+  <meta name="description" content="คลังตัวบทกฎหมายแห่งชาติ (ประมวลกฎหมายแพ่งและพาณิชย์) และระบบถาม-ตอบที่อ้างอิงตัวบทจริงทุกคำตอบ">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="logo-group">
+        <div class="logo-icon">⚖️</div>
+        <div class="logo-text">
+          <h1>THAI LEGAL AI</h1>
+          <span>คลังตัวบทกฎหมาย · ถาม-ตอบอ้างอิงตัวบทจริง</span>
+        </div>
+      </div>
+
+      <nav class="nav-tabs" aria-label="Main Navigation" role="tablist">
+        <button class="tab-btn active" data-tab="tab-ask" role="tab" aria-selected="true" aria-controls="tab-ask">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          ถาม-ตอบกฎหมาย
+        </button>
+        <button class="tab-btn" data-tab="tab-statutes" role="tab" aria-selected="false" aria-controls="tab-statutes">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          คลังตัวบทกฎหมาย
+        </button>
+      </nav>
+
+      <div class="status-badge checking" id="systemStatus" title="สถานะจริงของระบบ" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="systemStatusText">กำลังตรวจสอบระบบ...</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- TAB 1: ถาม-ตอบกฎหมาย -->
+    <section id="tab-ask" class="tab-content active" role="tabpanel">
+      <article class="glass-panel ask-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            ถามคำถามกฎหมาย
+          </h2>
+          <span class="panel-note">ตอบจากตัวบทในคลังเท่านั้น</span>
+        </div>
+        <div class="panel-body">
+          <form id="askForm">
+            <div class="sample-prompts-wrap">
+              <span class="sample-prompt-title">ตัวอย่างคำถาม:</span>
+              <div class="sample-prompt-chips" id="qaSampleChips">
+                <button type="button" class="chip-btn" data-q="สรุปเนื้อหา บท 251 ให้หน่อย">📖 สรุป ม.251 บุริมสิทธิ</button>
+                <button type="button" class="chip-btn" data-q="หากไม่ได้กำหนดอัตราดอกเบี้ยไว้โดยนิติกรรมหรือโดยบทกฎหมายอันชัดแจ้ง ให้คิดดอกเบี้ยร้อยละเท่าใดต่อปี?">⚖️ ม.7 ดอกเบี้ยตามกฎหมาย</button>
+                <button type="button" class="chip-btn" data-q="หนี้เงินผิดนัดให้คิดดอกเบี้ยร้อยละเท่าใดต่อปี และสามารถคิดดอกเบี้ยซ้อนในระหว่างผิดนัดได้หรือไม่?">📈 ม.224 ดอกเบี้ยผิดนัด</button>
+                <button type="button" class="chip-btn" data-q="การกู้ยืมเงินมีจำนวนเกินกว่าเท่าใดที่ต้องมีหลักฐานแห่งการกู้ยืมเป็นหนังสือจึงจะฟ้องร้องบังคับคดีได้?">💰 ม.653 กู้ยืมเงิน</button>
+                <button type="button" class="chip-btn" data-q="ลูกจ้างขับรถส่งของชนผู้อื่นเสียหายในทางการที่จ้าง นายจ้างต้องร่วมรับผิดกับลูกจ้างหรือไม่?">🚗 ม.420, 425 นายจ้างร่วมรับผิด</button>
+                <button type="button" class="chip-btn" data-q="การบอกเลิกสัญญาเช่าทรัพย์สินที่มิได้กำหนดเวลาไว้ คู่สัญญาต้องบอกกล่าวล่วงหน้าอย่างไร?">🏠 ม.566 บอกเลิกสัญญาเช่า</button>
+                <button type="button" class="chip-btn" data-q="การเดินทางไปดาวอังคารด้วยยานอวกาศความเร็วเหนือเสียงโดยไม่ขออนุญาตองค์การอวกาศสากล ผิดกฎหมายแพ่งหรือไม่?">🚀 ทดสอบ Abstention (นอกขอบเขต)</button>
+              </div>
+            </div>
+
+            <label for="questionInput" class="form-label">คำถาม:</label>
+            <textarea id="questionInput" class="legal-input" aria-describedby="questionHint" placeholder="เช่น 'กู้ยืมเงินเกินสองพันบาทต้องมีหลักฐานอะไร' หรือ 'มาตรา 420 บัญญัติว่าอย่างไร'"></textarea>
+            <p id="questionHint" class="field-hint" hidden>พิมพ์คำถามก่อน หรือเลือกตัวอย่างด้านบน</p>
+            <div class="ask-actions">
+              <button type="submit" class="btn-primary" id="askAiBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>ให้ AI ตอบ</span>
+              </button>
+              <button type="button" class="btn-secondary" id="searchDocsBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>ค้นหาตัวบท (ไม่ใช้ AI)</span>
+              </button>
+            </div>
+            <p class="hint">
+              <strong>ให้ AI ตอบ</strong> — AI อ่านตัวบทที่ค้นพบแล้วตอบ พร้อมยกข้อความจากตัวบท ระบบตรวจว่าข้อความที่ยกมามีอยู่จริงทุกข้อ
+              ถ้าตรวจไม่ผ่านหรือข้อมูลไม่พอ ระบบจะไม่ตอบ<br>
+              <strong>ค้นหาตัวบท</strong> — แสดงมาตราที่เกี่ยวข้องที่สุดโดยไม่ใช้ AI
+            </p>
+          </form>
+        </div>
+      </article>
+
+      <div id="askResult" class="result-area" hidden></div>
+    </section>
+
+    <!-- TAB 2: คลังตัวบทกฎหมายแห่งชาติ -->
+    <section id="tab-statutes" class="tab-content" role="tabpanel">
+      <article class="glass-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            คลังตัวบทกฎหมาย (Knowledge Base)
+          </h2>
+          <span class="panel-note">ป.พ.พ. ครบทั้งฉบับจาก code_lawyer.pdf · กฎหมายอื่นมีเพียงบางมาตรา</span>
+        </div>
+        <div class="panel-body">
+          <div class="filter-row" role="group" aria-label="เลือกกฎหมาย">
+            <span class="filter-row-label">กฎหมาย</span>
+            <div class="book-filters" id="statuteLawFilters"></div>
+          </div>
+          <div class="filter-row" role="group" aria-label="เลือกบรรพ">
+            <div class="book-filters sub" id="statuteBookFilters" hidden></div>
+          </div>
+
+          <div class="kb-toolbar">
+            <div class="kb-search-row">
+              <div class="search-box-wrap">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="search" id="statuteSearchInput" class="search-box" aria-label="ค้นหาในคลังตัวบท ด้วยเลขมาตราหรือคำ" placeholder="ค้นด้วยเลขมาตรา (420, 193/30) หรือคำ (ละเมิด, กู้ยืม, มรดก)">
+                <button type="button" id="clearSearchBtn" class="clear-search-btn" title="ล้างคำค้น" hidden>&times;</button>
+              </div>
+            </div>
+
+            <div class="kb-controls-row">
+              <div class="control-group">
+                <label for="statuteStatusFilter" class="control-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                  สถานะ:
+                </label>
+                <select id="statuteStatusFilter" class="kb-select">
+                  <option value="all" selected>ทั้งหมด</option>
+                  <option value="active">มีผลบังคับใช้</option>
+                  <option value="repealed">ยกเลิกแล้ว</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="statuteSortSelect" class="control-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="4"></line><polyline points="15 7 18 4 21 7"></polyline><line x1="6" y1="4" x2="6" y2="20"></line><polyline points="9 17 6 20 3 17"></polyline></svg>
+                  เรียงตาม:
+                </label>
+                <select id="statuteSortSelect" class="kb-select">
+                  <option value="relevance" disabled>ความเกี่ยวข้อง (เมื่อค้นด้วยคำ)</option>
+                  <option value="sec_asc" selected>เลขมาตรา น้อย → มาก</option>
+                  <option value="sec_desc">เลขมาตรา มาก → น้อย</option>
+                  <option value="book_asc">ตามบรรพ</option>
+                  <option value="len_desc">ตัวบทยาว → สั้น</option>
+                  <option value="len_asc">ตัวบทสั้น → ยาว</option>
+                </select>
+              </div>
+
+              <button type="button" id="resetFiltersBtn" class="btn-text-action" title="รีเซ็ตตัวกรองและการค้นหา" hidden>
+                ↺ ล้างตัวกรอง
+              </button>
+              <div id="statuteCountBadge" class="count-badge">กำลังโหลด...</div>
+            </div>
+          </div>
+
+          <div id="statuteGrid" class="statute-grid"></div>
+
+          <div class="load-more-wrap">
+            <button type="button" id="loadMoreStatutesBtn" class="btn-secondary" hidden>โหลดมาตราเพิ่มเติม</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    Thai Legal AI · ตัวบทจาก code_lawyer.pdf · คำตอบของ AI เป็นข้อมูลประกอบ ไม่ใช่คำปรึกษาทางกฎหมาย โปรดอ่านตัวบทที่แนบมาประกอบทุกครั้ง
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

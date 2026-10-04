@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
+
+# Vercel CLI
+.vercel/
+
+# ต้นฉบับ PDF ใช้เฉพาะตอนนำเข้าบนเครื่อง (แอปอ่านจาก data/legal_ai.db)
+code_lawyer.pdf

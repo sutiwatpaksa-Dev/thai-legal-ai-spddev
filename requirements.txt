@@ -1,0 +1,10 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.8.0
+rank-bm25>=0.2.2
+pythainlp>=5.0.0
+pypdfium2>=4.30.0
+requests>=2.32.0
+python-multipart>=0.0.9
+openai>=1.40.0
+anthropic>=1.11.0

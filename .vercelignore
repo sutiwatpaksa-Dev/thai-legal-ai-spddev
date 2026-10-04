@@ -1,0 +1,22 @@
+# สิ่งที่ไม่ต้องอัปโหลดขึ้น Vercel (แอปใช้แค่ app.py, api/, legal_engine/, static/, data/legal_ai.db)
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.vscode/
+.idea/
+.env
+.env.*
+
+# ใช้เฉพาะตอนนำเข้า/ตรวจข้อมูลบนเครื่อง
+code_lawyer.pdf
+ingest_pdf.py
+tools/
+tests/
+test_engine.py
+
+# เอกสารสำหรับผู้พัฒนา
+AGENTS.md
+CLAUDE.md
+REQUIREMENTS.md
