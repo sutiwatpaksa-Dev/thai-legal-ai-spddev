@@ -174,7 +174,44 @@
 
   <footer>
     Thai Legal AI · ตัวบทจาก code_lawyer.pdf · คำตอบของ AI เป็นข้อมูลประกอบ ไม่ใช่คำปรึกษาทางกฎหมาย โปรดอ่านตัวบทที่แนบมาประกอบทุกครั้ง
+    <div class="footer-actions fb-only">
+      <button type="button" class="btn-secondary footer-review-btn" id="siteReviewBtn">⭐ รีวิวเว็บไซต์</button>
+    </div>
   </footer>
+
+  <!-- ฟอร์มรีวิวเว็บไซต์ / แจ้งตัวบทผิด (ใช้ร่วมกัน) -->
+  <dialog id="feedbackDialog" class="feedback-dialog" aria-labelledby="feedbackDialogTitle">
+    <form id="feedbackDialogForm" class="feedback-form" method="dialog" novalidate>
+      <h2 id="feedbackDialogTitle" class="dialog-title"></h2>
+      <p id="feedbackDialogSection" class="dialog-section" hidden></p>
+
+      <fieldset id="starField" class="star-field">
+        <legend class="form-label">ให้คะแนนเว็บไซต์</legend>
+        <div class="stars" role="radiogroup">
+          <input type="radio" name="stars" id="star5" value="5"><label for="star5" title="5 ดาว">★</label>
+          <input type="radio" name="stars" id="star4" value="4"><label for="star4" title="4 ดาว">★</label>
+          <input type="radio" name="stars" id="star3" value="3"><label for="star3" title="3 ดาว">★</label>
+          <input type="radio" name="stars" id="star2" value="2"><label for="star2" title="2 ดาว">★</label>
+          <input type="radio" name="stars" id="star1" value="1"><label for="star1" title="1 ดาว">★</label>
+        </div>
+      </fieldset>
+
+      <label for="dialogComment" class="form-label" id="dialogCommentLabel">ความคิดเห็น</label>
+      <textarea id="dialogComment" class="legal-input fb-textarea" maxlength="1000"></textarea>
+
+      <label for="dialogNickname" class="form-label">ชื่อเล่นหรือนามแฝง (ไม่บังคับ)</label>
+      <input type="text" id="dialogNickname" class="legal-input fb-input fb-nickname" maxlength="40" placeholder="เว้นว่าง = ไม่ระบุชื่อ" autocomplete="nickname">
+      <input type="text" name="website" class="fb-trap" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <p class="fb-privacy">ไม่ต้องใส่ชื่อจริง อีเมล หรือเบอร์โทร — ระบบเก็บเฉพาะคะแนน ความคิดเห็น และชื่อเล่น (ถ้ามี) เพื่อปรับปรุงเว็บไซต์ ไม่เก็บ IP</p>
+      <p id="feedbackDialogMsg" class="fb-msg" role="status" aria-live="polite"></p>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn-secondary" id="feedbackDialogCancel">ยกเลิก</button>
+        <button type="submit" class="btn-primary" id="feedbackDialogSubmit"><span>ส่ง</span></button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/static/js/app.js"></script>
 </body>

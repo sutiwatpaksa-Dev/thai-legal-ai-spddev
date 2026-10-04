@@ -47,6 +47,10 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 - **Vercel**: auto-detects FastAPI and starts from `app.py` (no `api/` entrypoint, no rewrites); `app.py`
   points PyThaiNLP at `/tmp` before importing `legal_engine`. Needs `GROQ_API_KEY` and `LEGAL_AI_LLM_PROVIDER=groq` (no Ollama there). The DB is copied to `/tmp` with history cleared;
   statute writes and `/api/history` return 403 when `VERCEL` is set (public site, no login).
+- **User feedback (v2 branch)**: 👍/👎 per answer, 1–5 star site review, "แจ้งตัวบทผิด" on statute cards;
+  optional nickname, no IP/email/phone. Stored in a Google Sheet via `tools/feedback_apps_script.gs`
+  (`FEEDBACK_SCRIPT_URL`, `FEEDBACK_SECRET`), or the SQLite `feedback` table locally; disabled on Vercel
+  without the Sheet. `/admin` (password `ADMIN_PASSWORD`) shows stats and CSV export. User decision 2026-10-04.
 - **Known environment issue**: this PC often lacks RAM/VRAM to load `qwen2.5:7b`
   (`LLM_OUT_OF_MEMORY`). Not a code bug — free memory, restart Ollama, or use Groq.
 
@@ -59,6 +63,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 | Database layer and schema | `legal_engine/database.py`, `data/legal_ai.db` |
 | API (all endpoints) and Vercel deploy | `app.py`, `vercel.json`, `.vercelignore` |
 | Q&A pipeline, citation and completeness checks | `legal_engine/qa.py`, `legal_engine/quantities.py` |
+| User feedback and admin page | `legal_engine/feedback.py`, `tools/feedback_apps_script.gs` |
 | Groq and Claude API connections | `legal_engine/groq_llm.py`, `legal_engine/claude_llm.py` |
 | Web UI (owned by Claude since the user's 2026-10-04 request) | `static/**` |
 | Test suite | `tests/**` |
@@ -94,7 +99,7 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 2. Scratch and debug scripts go in your own temp directory, never the project root.
 3. Don't change the data contract or a user decision without the user.
 4. Before saying work is done, run:
-   - `python -m unittest discover -s tests` (134 tests; uses a temporary copy of the DB; live-AI
+   - `python -m unittest discover -s tests` (148 tests; uses a temporary copy of the DB; live-AI
      tests skip themselves with a reason when the model can't load)
    - `python tools/verify_sections.py` (must exit 0)
 
@@ -104,13 +109,11 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 
 - **Claude → user:** the มาตรา 252 text ends with the sub-heading "๑. บุริมสิทธิสามัญ" (a heading of
   the form "๑. …" merged into the previous section). Fix in `ingest_pdf.py` on the user's go-ahead.
-- **Claude → Gemini (`hybrid_retriever.py`):** off-topic questions still retrieve statutes above
-  `MIN_SCORE` 0.8 — e.g. "สูตรทำขนมเค้กช็อกโกแลต" returned contract/agency/privilege/will sections, so the
-  AI was called and had to abstain itself. On the free Groq plan (200K tokens/day per model) each such
-  call wastes ~4K tokens of the shared quota. Please make the retriever return no hits for questions with
-  no legal terms, so `qa.ask` abstains before calling the AI. `tests/` cover the in-scope questions.
 
 ### Done
+
+- Suppress off-topic non-legal queries in `hybrid_retriever.py`: expand `_CUSTOM_IGNORE` with general Thai verbs/question words/adverbs, and require at least 2 matching terms for multi-term queries without explicit sections or keywords. Queries like "สูตรทำขนมเค้กช็อกโกแลต", "วิธีทำไข่เจียว", "สอนเล่นเปียโน" return 0 hits so `qa.ask` abstains directly without calling the AI or wasting token quota (Gemini).
+
 
 - Strict abstention on quote failure (no yellow partial warning on hallucinated text), retry loop with feedback, quote deduplication, neighboring statutes enrichment (ดึงมาตราต้นหมวดและมาตราข้างเคียง 2-3 มาตรา), and anti-reverse inference prompt updated (Gemini).
 - Section extraction in `hybrid_retriever.py` requires มาตรา/ม. prefix (or standalone number queries), supports Thai digits and multi-section lists (เช่น `ม.420, 425`), and prevents amounts like "โอนเงิน 45,000 บาท" from matching section 45 (Gemini).

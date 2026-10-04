@@ -67,7 +67,25 @@ CREATE TABLE IF NOT EXISTS analyses (
     created_at          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_analyses_created ON analyses(created_at);
+
+-- ความคิดเห็นผู้ใช้ (ใช้เมื่อรันบนเครื่อง; บน Vercel เก็บใน Google Sheet — ดู legal_engine/feedback.py)
+CREATE TABLE IF NOT EXISTS feedback (
+    id             TEXT PRIMARY KEY,
+    created_at     TEXT NOT NULL,
+    type           TEXT NOT NULL,          -- answer | site | statute
+    rating         INTEGER,                -- answer: 1/-1, site: 1-5, statute: NULL
+    comment        TEXT NOT NULL DEFAULT '',
+    nickname       TEXT NOT NULL DEFAULT '',
+    question       TEXT NOT NULL DEFAULT '',
+    model          TEXT NOT NULL DEFAULT '',
+    answer_status  TEXT NOT NULL DEFAULT '',
+    section        TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at);
 """
+
+FEEDBACK_COLUMNS = ("id", "created_at", "type", "rating", "comment", "nickname",
+                    "question", "model", "answer_status", "section")
 
 _STATUTE_FIELDS = ("id", "category", "book", "title", "section", "content", "keywords", "elements", "status")
 
@@ -306,3 +324,18 @@ def get_analysis(analysis_id: int) -> Optional[Dict[str, Any]]:
 def delete_analysis(analysis_id: int) -> bool:
     with get_conn() as conn:
         return conn.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,)).rowcount > 0
+
+
+# ---------------- ความคิดเห็นผู้ใช้ ----------------
+
+def save_feedback(row: Dict[str, Any]) -> None:
+    with get_conn() as conn:
+        conn.execute(f"INSERT INTO feedback ({', '.join(FEEDBACK_COLUMNS)}) VALUES ({', '.join('?' * len(FEEDBACK_COLUMNS))})",
+                     tuple(row.get(c) for c in FEEDBACK_COLUMNS))
+
+
+def list_feedback(limit: int = 500) -> List[Dict[str, Any]]:
+    """ล่าสุดก่อน"""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM feedback ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(r) for r in rows]

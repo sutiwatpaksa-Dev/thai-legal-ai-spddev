@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ผู้ดูแล | Thai Legal AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <div class="logo-group">
+        <div class="logo-icon">⚖️</div>
+        <div class="logo-text">
+          <h1>THAI LEGAL AI</h1>
+          <span>หน้าผู้ดูแล · ความคิดเห็นผู้ใช้</span>
+        </div>
+      </div>
+      <a class="btn-secondary admin-back" href="/">← กลับหน้าเว็บ</a>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <!-- เข้าสู่ระบบ -->
+    <article class="glass-panel admin-login" id="loginPanel">
+      <form id="loginForm" class="feedback-form">
+        <label for="adminPassword" class="form-label">รหัสผ่านผู้ดูแล</label>
+        <input type="password" id="adminPassword" class="legal-input fb-input" autocomplete="current-password" required>
+        <p id="loginMsg" class="fb-msg" role="status" aria-live="polite"></p>
+        <button type="submit" class="btn-primary"><span>เข้าดูข้อมูล</span></button>
+      </form>
+    </article>
+
+    <!-- ข้อมูล -->
+    <section id="dataPanel" hidden>
+      <div class="admin-stats" id="statCards"></div>
+
+      <article class="glass-panel admin-section">
+        <h2 class="result-label">👍/👎 แยกตามโมเดล</h2>
+        <div id="modelTable"></div>
+      </article>
+
+      <article class="glass-panel admin-section">
+        <div class="admin-toolbar">
+          <label for="typeFilter" class="form-label">แสดง</label>
+          <select id="typeFilter" class="kb-select">
+            <option value="all">ทั้งหมด</option>
+            <option value="answer">ให้คะแนนคำตอบ</option>
+            <option value="site">รีวิวเว็บไซต์</option>
+            <option value="statute">แจ้งตัวบทผิด</option>
+          </select>
+          <span id="rowCount" class="count-badge"></span>
+          <span class="admin-toolbar-spacer"></span>
+          <button type="button" class="btn-secondary" id="refreshBtn">โหลดใหม่</button>
+          <button type="button" class="btn-secondary" id="csvBtn">ดาวน์โหลด CSV</button>
+          <button type="button" class="btn-secondary" id="logoutBtn">ออกจากระบบ</button>
+        </div>
+        <div id="rows" class="admin-rows"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

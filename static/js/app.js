@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initAsk();
   initKnowledgeBase();
+  initFeedback();
   loadSystemStatus();
 });
 
@@ -126,6 +127,9 @@ function statuteCard(s, opts = {}) {
         <span class="statute-badge">${escapeHtml(s.category || "")}</span>
         ${repealed ? `<span class="repealed-badge">ยกเลิกแล้ว</span>` : ""}
         ${opts.extra || ""}
+        <button type="button" class="copy-sec-btn report-btn fb-only" data-report="${escapeHtml(s.section)}" aria-label="แจ้งว่าข้อความ${escapeHtml(s.section)}ผิด">
+          <span>แจ้งตัวบทผิด</span>
+        </button>
         <button type="button" class="copy-sec-btn" data-copy="${escapeHtml(s.id)}" aria-label="คัดลอก${escapeHtml(s.section)}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           <span>คัดลอก</span>
@@ -234,6 +238,7 @@ async function loadSystemStatus() {
   try {
     const quick = await (await fetch("/api/status")).json();
     statuteTotal = quick.statutes;
+    document.body.classList.toggle("feedback-on", !!(quick.feedback && quick.feedback.enabled));
     applyHealth(quick.llm);
     initModelPicker(quick.llm.models);
     if (quick.llm.provider === "ollama") {
@@ -331,7 +336,9 @@ async function runAsk(question, askBtn, searchBtn, syncButtons) {
   try {
     const data = await postJson("/api/ask", { question, model: selectedModel() });
     if (data.llm_health) applyHealth({ health: data.llm_health, model: data.model });
-    showResult(renderAnswer(data));
+    lastAnswer = { question, model: data.model || (data.status === "DIRECT" ? "ฐานข้อมูลตัวบท" : ""),
+                   answer_status: data.status || "" };
+    showResult(renderAnswer(data) + (data.status !== "LLM_ERROR" ? answerFeedbackHtml() : ""));
   } catch (err) {
     if (err.status === 0 || err.status >= 500) setStatusBadge("error", "ระบบขัดข้อง", err.message);
     showResult(banner("banner-warning", "✕", escapeHtml(err.message)));
@@ -699,4 +706,148 @@ function appendBatch() {
   const shownText = `แสดง ${fmt(kb.shown)} จาก ${fmt(kb.filtered.length)} มาตรา`;
   document.getElementById("statuteCountBadge").textContent = kb.note ? `${kb.note} · ${shownText}` : shownText;
   document.getElementById("loadMoreStatutesBtn").hidden = kb.shown >= kb.filtered.length;
+}
+
+// ---------- ความคิดเห็นผู้ใช้ (ให้คะแนนคำตอบ / รีวิวเว็บไซต์ / แจ้งตัวบทผิด) ----------
+// แสดงเฉพาะเมื่อ server เปิดระบบ (body.feedback-on) — ไม่เก็บ IP อีเมล หรือเบอร์โทร
+
+let lastAnswer = null;
+
+function savedNickname() {
+  try { return localStorage.getItem("legalAiNickname") || ""; } catch (_) { return ""; }
+}
+
+function rememberNickname(name) {
+  try { localStorage.setItem("legalAiNickname", name); } catch (_) { /* ไม่จำก็ไม่เป็นไร */ }
+}
+
+function feedbackErrorText(err) {
+  if (err.status === 429) return "ส่งถี่เกินไป กรุณารอสักครู่แล้วลองใหม่";
+  if (err.status === 503) return "ระบบความคิดเห็นยังไม่เปิดใช้งาน";
+  if (err.status === 422) return "ข้อมูลไม่ครบ กรุณาตรวจอีกครั้ง";
+  return err.message || "ส่งไม่สำเร็จ กรุณาลองใหม่";
+}
+
+function answerFeedbackHtml() {
+  return `
+    <section class="glass-panel result-block feedback-box fb-only" aria-label="ให้คะแนนคำตอบ">
+      <div class="fb-question">คำตอบนี้มีประโยชน์ไหม?</div>
+      <div class="fb-votes">
+        <button type="button" class="chip-btn fb-vote" data-vote="1" aria-pressed="false">👍 มีประโยชน์</button>
+        <button type="button" class="chip-btn fb-vote" data-vote="-1" aria-pressed="false">👎 ไม่มีประโยชน์</button>
+      </div>
+      <form class="fb-answer-form feedback-form" hidden novalidate>
+        <label class="form-label" for="fbAnswerComment">บอกเพิ่มเติม (ไม่บังคับ)</label>
+        <textarea id="fbAnswerComment" class="legal-input fb-textarea" maxlength="1000" placeholder="เช่น ตอบผิดมาตรา ขาดเงื่อนไข หรืออ่านเข้าใจง่าย"></textarea>
+        <label class="form-label" for="fbAnswerNickname">ชื่อเล่นหรือนามแฝง (ไม่บังคับ)</label>
+        <input type="text" id="fbAnswerNickname" class="legal-input fb-input fb-nickname" maxlength="40" placeholder="เว้นว่าง = ไม่ระบุชื่อ" value="${escapeHtml(savedNickname())}">
+        <input type="text" name="website" class="fb-trap" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <p class="fb-privacy">ระบบเก็บคะแนน ความคิดเห็น ชื่อเล่น (ถ้ามี) และคำถามนี้กับโมเดลที่ตอบ เพื่อปรับปรุงคำตอบ — ไม่เก็บ IP อีเมล หรือเบอร์โทร</p>
+        <button type="submit" class="btn-primary"><span>ส่งความคิดเห็น</span></button>
+      </form>
+      <p class="fb-msg" role="status" aria-live="polite"></p>
+    </section>`;
+}
+
+async function sendFeedback(body) {
+  return postJson("/api/feedback", body);
+}
+
+function initFeedback() {
+  const dialog = document.getElementById("feedbackDialog");
+  const form = document.getElementById("feedbackDialogForm");
+  const msg = document.getElementById("feedbackDialogMsg");
+  const comment = document.getElementById("dialogComment");
+  const nickname = document.getElementById("dialogNickname");
+  const submitBtn = document.getElementById("feedbackDialogSubmit");
+  let mode = "site", section = "";
+
+  const open = (newMode, newSection = "") => {
+    mode = newMode; section = newSection;
+    form.reset();
+    nickname.value = savedNickname();
+    msg.textContent = ""; msg.className = "fb-msg";
+    submitBtn.disabled = false;
+    document.getElementById("starField").hidden = mode !== "site";
+    const secLine = document.getElementById("feedbackDialogSection");
+    secLine.hidden = mode !== "statute";
+    secLine.textContent = mode === "statute" ? section : "";
+    document.getElementById("feedbackDialogTitle").textContent = mode === "site" ? "รีวิวเว็บไซต์" : "แจ้งตัวบทผิด";
+    document.getElementById("dialogCommentLabel").textContent =
+      mode === "site" ? "ความคิดเห็น (ไม่บังคับ)" : "ข้อความที่ผิด และควรเป็นอย่างไร (จำเป็น)";
+    comment.placeholder = mode === "site" ? "ชอบหรืออยากให้ปรับปรุงอะไร" : "เช่น ท้ายมาตรามีหัวข้อ \"๑. บุริมสิทธิสามัญ\" ติดมา";
+    dialog.showModal();
+    (mode === "site" ? document.getElementById("star5") : comment).focus();
+  };
+
+  document.getElementById("siteReviewBtn").addEventListener("click", () => open("site"));
+  document.getElementById("feedbackDialogCancel").addEventListener("click", () => dialog.close());
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const stars = form.querySelector('input[name="stars"]:checked');
+    if (mode === "site" && !stars) { msg.textContent = "กรุณาเลือกจำนวนดาว"; msg.className = "fb-msg error"; return; }
+    if (mode === "statute" && !comment.value.trim()) { msg.textContent = "กรุณาอธิบายว่าผิดตรงไหน"; msg.className = "fb-msg error"; comment.focus(); return; }
+    submitBtn.disabled = true;
+    msg.textContent = "กำลังส่ง..."; msg.className = "fb-msg";
+    try {
+      await sendFeedback({
+        type: mode, rating: mode === "site" ? Number(stars.value) : null,
+        comment: comment.value, nickname: nickname.value, section,
+        website: form.querySelector(".fb-trap").value,
+      });
+      rememberNickname(nickname.value.trim());
+      msg.textContent = "ขอบคุณสำหรับความคิดเห็น ✓"; msg.className = "fb-msg ok";
+      setTimeout(() => dialog.close(), 1200);
+    } catch (err) {
+      msg.textContent = feedbackErrorText(err); msg.className = "fb-msg error";
+      submitBtn.disabled = false;
+    }
+  });
+
+  document.addEventListener("click", e => {
+    const report = e.target.closest("[data-report]");
+    if (report) return open("statute", report.dataset.report);
+
+    const vote = e.target.closest(".fb-vote");
+    if (vote) {
+      const box = vote.closest(".feedback-box");
+      box.dataset.vote = vote.dataset.vote;
+      box.querySelectorAll(".fb-vote").forEach(b => {
+        const on = b === vote;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+      const f = box.querySelector(".fb-answer-form");
+      f.hidden = false;
+      f.querySelector("textarea").focus();
+    }
+  });
+
+  document.addEventListener("submit", async e => {
+    const f = e.target.closest(".fb-answer-form");
+    if (!f) return;
+    e.preventDefault();
+    const box = f.closest(".feedback-box");
+    const out = box.querySelector(".fb-msg");
+    const btn = f.querySelector("button[type=submit]");
+    btn.disabled = true;
+    out.textContent = "กำลังส่ง..."; out.className = "fb-msg";
+    const nick = f.querySelector(".fb-nickname").value;
+    try {
+      await sendFeedback({
+        type: "answer", rating: Number(box.dataset.vote),
+        comment: f.querySelector("textarea").value, nickname: nick,
+        ...(lastAnswer || {}), website: f.querySelector(".fb-trap").value,
+      });
+      rememberNickname(nick.trim());
+      f.hidden = true;
+      box.querySelector(".fb-votes").hidden = true;
+      box.querySelector(".fb-question").textContent = "ขอบคุณสำหรับความคิดเห็น ✓";
+      out.textContent = "";
+    } catch (err) {
+      out.textContent = feedbackErrorText(err); out.className = "fb-msg error";
+      btn.disabled = false;
+    }
+  });
 }

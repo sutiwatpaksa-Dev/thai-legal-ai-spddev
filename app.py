@@ -13,8 +13,10 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import hmac
+from collections import defaultdict, deque
 from typing import Optional, List
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -26,6 +28,7 @@ if os.environ.get("VERCEL"):
 
 from legal_engine import claude_llm
 from legal_engine import database as db
+from legal_engine import feedback
 from legal_engine import groq_llm
 from legal_engine import qa as qa_module
 from legal_engine.hybrid_retriever import HybridLegalRetriever
@@ -198,7 +201,8 @@ def get_status(probe: bool = Query(False, description="ทดสอบโมเ�
 
     llm["health"] = dict(_llm_health)
     llm["reachable"] = bool(_llm_health["ok"])
-    return {"statutes": len(retriever.statutes), "categories": db.list_categories(), "llm": llm}
+    return {"statutes": len(retriever.statutes), "categories": db.list_categories(), "llm": llm,
+            "feedback": {"enabled": feedback.enabled()}}
 
 
 def _error_code_and_message(e: Exception) -> dict:
@@ -271,6 +275,93 @@ def delete_history_item(analysis_id: int):
     if not db.delete_analysis(analysis_id):
         raise HTTPException(status_code=404, detail="ไม่พบประวัติ")
 
+# ---------------- ความคิดเห็นผู้ใช้ (ให้คะแนนคำตอบ / รีวิวเว็บไซต์ / แจ้งตัวบทผิด) ----------------
+
+class FeedbackRequest(BaseModel):
+    type: str = Field(..., pattern=r"^(answer|site|statute)$")
+    rating: Optional[int] = None
+    comment: str = Field("", max_length=1000)
+    nickname: str = Field("", max_length=40)
+    question: str = Field("", max_length=2000)
+    model: str = Field("", max_length=64)
+    answer_status: str = Field("", max_length=32)
+    section: str = Field("", max_length=64)
+    website: str = ""   # กับดักบอท: ช่องที่ซ่อนจากผู้ใช้ — ถ้ามีค่าแสดงว่าเป็นสแปม
+
+
+# จำกัดจำนวนครั้งต่อ IP ในหน่วยความจำของแต่ละ instance (ไม่บันทึก IP ลงที่ใด)
+FEEDBACK_LIMIT, FEEDBACK_WINDOW = 10, 600
+ADMIN_FAIL_LIMIT, ADMIN_FAIL_WINDOW = 5, 600
+_recent = defaultdict(deque)
+_recent_lock = threading.Lock()
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    return fwd.split(",")[0].strip() or (request.client.host if request.client else "")
+
+
+def _too_many(key: str, limit: int, window: int, record: bool = True) -> bool:
+    now = time.time()
+    with _recent_lock:
+        q = _recent[key]
+        while q and now - q[0] > window:
+            q.popleft()
+        if len(q) >= limit:
+            return True
+        if record:
+            q.append(now)
+    return False
+
+
+@app.post("/api/feedback", status_code=201)
+def submit_feedback(req: FeedbackRequest, request: Request):
+    """รับความคิดเห็น — ไม่เก็บ IP อีเมล หรือเบอร์โทร ชื่อเล่นไม่บังคับ"""
+    if not feedback.enabled():
+        raise HTTPException(status_code=503, detail="ระบบความคิดเห็นยังไม่เปิดใช้งาน")
+    if req.website:
+        return {"ok": True}   # สแปม: ตอบเหมือนสำเร็จแต่ไม่บันทึก
+    if req.type == "answer" and req.rating not in (1, -1):
+        raise HTTPException(status_code=422, detail="คะแนนคำตอบต้องเป็น 1 หรือ -1")
+    if req.type == "site" and req.rating not in (1, 2, 3, 4, 5):
+        raise HTTPException(status_code=422, detail="กรุณาให้ดาว 1-5 ดวง")
+    if req.type == "statute" and not (req.section.strip() and req.comment.strip()):
+        raise HTTPException(status_code=422, detail="กรุณาระบุมาตราและอธิบายว่าผิดตรงไหน")
+    if _too_many("fb:" + _client_ip(request), FEEDBACK_LIMIT, FEEDBACK_WINDOW):
+        raise HTTPException(status_code=429, detail="ส่งความคิดเห็นถี่เกินไป กรุณารอสักครู่")
+    entry = req.model_dump(exclude={"website"})
+    if req.type == "statute":
+        entry["rating"] = None
+    try:
+        row = feedback.save(entry)
+    except feedback.FeedbackError as e:
+        logging.getLogger("legal_ai.feedback").error("save failed: %s", e)
+        raise HTTPException(status_code=502, detail="บันทึกความคิดเห็นไม่สำเร็จ กรุณาลองใหม่") from None
+    return {"ok": True, "id": row["id"]}
+
+
+def _require_admin(request: Request, x_admin_password: str = Header("")) -> None:
+    expected = os.environ.get("ADMIN_PASSWORD", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail="ยังไม่ได้ตั้งรหัสผ่านผู้ดูแล (ADMIN_PASSWORD)")
+    key = "admin:" + _client_ip(request)
+    if _too_many(key, ADMIN_FAIL_LIMIT, ADMIN_FAIL_WINDOW, record=False):
+        raise HTTPException(status_code=429, detail="ใส่รหัสผิดหลายครั้ง กรุณารอ 10 นาที")
+    if not hmac.compare_digest(x_admin_password.encode("utf-8"), expected.encode("utf-8")):
+        _too_many(key, ADMIN_FAIL_LIMIT, ADMIN_FAIL_WINDOW)   # นับครั้งที่ผิด
+        raise HTTPException(status_code=401, detail="รหัสผ่านไม่ถูกต้อง")
+
+
+@app.get("/api/admin/feedback", dependencies=[Depends(_require_admin)])
+def admin_feedback(limit: int = Query(500, ge=1, le=2000)):
+    try:
+        rows = feedback.list_entries(limit)
+    except feedback.FeedbackError as e:
+        logging.getLogger("legal_ai.feedback").error("list failed: %s", e)
+        raise HTTPException(status_code=502, detail="อ่านข้อมูลจากที่เก็บไม่สำเร็จ") from None
+    return {"backend": feedback.backend(), "stats": feedback.stats(rows), "rows": rows}
+
+
 # ให้บริการไฟล์ static (Frontend)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if not os.path.exists(static_dir):
@@ -284,6 +375,11 @@ async def serve_index():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "Legal AI Backend is running."}
+
+@app.get("/admin")
+async def serve_admin():
+    """หน้าผู้ดูแล — ข้อมูลจริงต้องใส่รหัสผ่าน (ตรวจที่ /api/admin/feedback)"""
+    return FileResponse(os.path.join(static_dir, "admin.html"))
 
 if __name__ == "__main__":
     import uvicorn

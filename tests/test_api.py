@@ -184,7 +184,7 @@ class TestFrontend(unittest.TestCase):
     def test_js_calls_only_existing_endpoints(self):
         used = set(re.findall(r'["`](/api/[a-z\-]+)', self.js))
         self.assertTrue(used)
-        self.assertEqual(used - {"/api/ask", "/api/search", "/api/status", "/api/statutes"}, set())
+        self.assertEqual(used - {"/api/ask", "/api/search", "/api/status", "/api/statutes", "/api/feedback"}, set())
 
     def test_no_hardcoded_scores_or_claims(self):
         self.assertNotRegex(self.js, r"faithfulness_score\s*[:=]\s*\d")

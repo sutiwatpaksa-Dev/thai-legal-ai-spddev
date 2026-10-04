@@ -79,6 +79,24 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 - **เวลาตอบ:** ตั้ง `maxDuration` ไว้ 300 วินาที (คำถามที่ต้องถามซ้ำอาจใช้เวลาเกิน 60 วินาที)
   ถ้าแผน Vercel ของคุณจำกัดต่ำกว่านี้ ให้ลดค่าใน `vercel.json`
 
+## 💬 ความคิดเห็นผู้ใช้ (v2)
+
+ผู้ใช้ให้คะแนนคำตอบ (👍/👎 + ความคิดเห็น), รีวิวเว็บไซต์ (1–5 ดาว) และแจ้งตัวบทผิด (ปุ่มบนการ์ดมาตรา) ได้
+โดยใส่ชื่อเล่น/นามแฝงหรือไม่ระบุชื่อก็ได้ — **ไม่เก็บ IP อีเมล หรือเบอร์โทร** มีกับดักสแปมและจำกัด 10 ครั้ง/10 นาทีต่อ IP
+
+ที่เก็บ: Google Sheet (บน Vercel) หรือตาราง `feedback` ใน SQLite (บนเครื่อง ถ้ายังไม่ได้ตั้งค่า Sheet)
+บน Vercel ถ้ายังไม่ตั้งค่า Sheet ระบบจะปิดและซ่อนปุ่มทั้งหมด (ไม่รับข้อมูลที่จะหายไปกับ `/tmp`)
+
+ตั้งค่า Google Sheet (ครั้งเดียว):
+1. สร้าง Google Sheet → ส่วนขยาย → Apps Script → วางโค้ดจาก `tools/feedback_apps_script.gs`
+   แล้วแก้ `SECRET` เป็นรหัสลับยาวๆ ของคุณ
+2. Deploy → New deployment → Web app · Execute as: **Me** · Who has access: **Anyone** → คัดลอก Web app URL
+3. ใน Vercel ตั้ง `FEEDBACK_SCRIPT_URL` (URL จากข้อ 2), `FEEDBACK_SECRET` (ค่าเดียวกับ `SECRET`)
+   และ `ADMIN_PASSWORD` (รหัสเข้าหน้าผู้ดูแล) — ห้ามใส่ค่าเหล่านี้ในไฟล์ใดในโฟลเดอร์นี้
+
+หน้าผู้ดูแล: `/admin` — ใส่ `ADMIN_PASSWORD` เพื่อดูสรุป (จำนวน, ดาวเฉลี่ย, 👍/👎 แยกตามโมเดล), รายการ และดาวน์โหลด CSV
+(ใส่รหัสผิด 5 ครั้งจะถูกพัก 10 นาที)
+
 ## ⚙️ ตัวแปร environment
 
 | ตัวแปร | ค่าเริ่มต้น | ใช้ทำอะไร |
@@ -94,6 +112,9 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 | `LEGAL_AI_LLM_BASE_URL` | `http://localhost:11434/v1` | ที่อยู่ Ollama |
 | `LEGAL_AI_LLM_MODEL` | `qwen2.5:7b` | โมเดล Ollama |
 | `LEGAL_AI_LLM_TIMEOUT` | `180` | timeout (วินาที) ของ Ollama |
+| `FEEDBACK_SCRIPT_URL` | — | URL ของ Apps Script ที่บันทึกความคิดเห็นลง Google Sheet |
+| `FEEDBACK_SECRET` | — | รหัสลับเดียวกับ `SECRET` ใน Apps Script |
+| `ADMIN_PASSWORD` | — | รหัสเข้าหน้า `/admin` (ไม่ตั้ง = ปิดหน้าผู้ดูแล) |
 | `LEGAL_AI_DB` | `data/legal_ai.db` | ที่อยู่ฐานข้อมูล |
 | `LEGAL_AI_DEBUG` | — | `1` = แสดงรายละเอียด error ของ AI ในผลลัพธ์ |
 
@@ -110,6 +131,8 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 |---|---|
 | `app.py` | FastAPI — ทุก endpoint, ให้บริการหน้าเว็บ และเป็นจุดเริ่มแอปบน Vercel |
 | `legal_engine/qa.py` | ถาม-ตอบ ตรวจอ้างอิงและความครบถ้วน |
+| `legal_engine/feedback.py`, `tools/feedback_apps_script.gs` | ความคิดเห็นผู้ใช้ และสคริปต์ Google Sheet |
+| `static/admin.html` | หน้าผู้ดูแล (ดูความคิดเห็น) |
 | `legal_engine/groq_llm.py` | เชื่อมต่อ Groq และรายการโมเดลที่เลือกได้ |
 | `legal_engine/claude_llm.py` | เชื่อมต่อ Claude API (เสียเงิน ไม่ใช้โดยอัตโนมัติ) และ JSON schema ของคำตอบ |
 | `legal_engine/hybrid_retriever.py` | ค้นหาตัวบท |

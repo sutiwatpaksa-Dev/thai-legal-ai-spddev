@@ -1,0 +1,43 @@
+/* หน้าผู้ดูแล — ใช้ตัวแปรสีจาก style.css */
+.admin-main { max-width: 1100px; margin: 0 auto; padding: 2rem 16px 3rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.admin-back { text-decoration: none; width: auto; padding: 0.5rem 1rem; font-size: 0.9rem; }
+.admin-login { max-width: 420px; width: 100%; margin: 2rem auto; padding: 1.75rem; }
+.admin-login .feedback-form { margin-top: 0; }
+
+#dataPanel { display: flex; flex-direction: column; gap: 1.25rem; }
+#dataPanel[hidden] { display: none; }
+
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
+.stat-card { padding: 1.1rem 1.25rem; }
+.stat-label { color: var(--text-muted); font-size: 0.85rem; }
+.stat-value { font-size: 1.9rem; font-weight: 700; color: var(--gold-light); font-family: var(--font-en); }
+.stat-sub { color: var(--text-dim); font-size: 0.8rem; }
+
+.admin-section { padding: 1.25rem 1.5rem; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.admin-table th, .admin-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border-subtle); }
+.admin-table th { color: var(--text-muted); font-weight: 500; }
+.admin-table td.num { font-family: var(--font-en); }
+
+.admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+.admin-toolbar .form-label { margin: 0; }
+.admin-toolbar-spacer { flex: 1; }
+.admin-toolbar .btn-secondary { width: auto; padding: 0.5rem 0.9rem; font-size: 0.88rem; }
+
+.admin-rows { display: flex; flex-direction: column; gap: 0.75rem; }
+.fb-row { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.9rem 1rem; background: rgba(10, 14, 23, 0.5); }
+.fb-row-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.85rem; color: var(--text-muted); }
+.fb-type { border-radius: 999px; padding: 0.1rem 0.6rem; font-size: 0.78rem; border: 1px solid var(--border-gold); color: var(--gold-light); }
+.fb-type.answer { border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+.fb-type.statute { border-color: rgba(245, 158, 11, 0.45); color: #fcd34d; }
+.fb-rating { font-weight: 600; color: var(--text-main); }
+.fb-comment { margin-top: 0.5rem; white-space: pre-wrap; word-break: break-word; }
+.fb-context { margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-dim); white-space: pre-wrap; word-break: break-word; }
+.fb-empty { color: var(--text-muted); }
+
+@media (max-width: 760px) {
+  .admin-main { padding-top: 1.25rem; }
+  .admin-section { padding: 1rem; }
+  .admin-toolbar-spacer { display: none; }
+  .admin-table { font-size: 0.85rem; }
+}

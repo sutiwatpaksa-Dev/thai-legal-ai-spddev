@@ -1063,3 +1063,79 @@ footer {
   .statute-para { text-indent: 1.5rem; }
   .verification-banner { flex-wrap: wrap; padding: 0.85rem 1rem; }
 }
+
+/* ---------- ความคิดเห็นผู้ใช้ ---------- */
+.fb-only { display: none !important; }
+body.feedback-on .fb-only { display: revert !important; }
+body.feedback-on .copy-sec-btn.fb-only { display: inline-flex !important; }
+body.feedback-on .feedback-box.fb-only,
+body.feedback-on .footer-actions.fb-only { display: block !important; }
+
+/* ช่องกับดักบอท — ซ่อนจากผู้ใช้และโปรแกรมอ่านหน้าจอ */
+.fb-trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+.feedback-box { padding: 1.25rem 1.5rem; }
+.fb-question { font-weight: 600; margin-bottom: 0.75rem; }
+.fb-votes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fb-vote.active { border-color: var(--gold-primary); color: var(--gold-light); background: rgba(229, 184, 105, 0.12); }
+
+.feedback-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+.feedback-form .btn-primary { align-self: flex-start; width: auto; padding: 12px 22px; }
+.fb-textarea { min-height: 90px; }
+.fb-input {
+  width: 100%;
+  background: rgba(10, 14, 23, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.9rem;
+  color: var(--text-main);
+  font-family: var(--font-thai);
+  font-size: 1rem;
+  transition: var(--transition);
+}
+.fb-input:focus { border-color: var(--gold-primary); box-shadow: 0 0 15px rgba(229, 184, 105, 0.2); }
+.fb-privacy { font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; }
+.fb-msg { font-size: 0.9rem; min-height: 1.2em; color: var(--text-muted); }
+.fb-msg.ok { color: var(--emerald-success); }
+.fb-msg.error { color: var(--red-danger); }
+
+.report-btn { color: var(--text-dim); }
+.report-btn:hover { color: var(--amber-warn); border-color: var(--amber-warn); }
+
+.footer-actions { margin-top: 0.75rem; }
+.footer-review-btn { display: inline-flex; width: auto; padding: 0.5rem 1.1rem; font-size: 0.9rem; }
+
+.feedback-dialog {
+  margin: auto;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  background: var(--bg-secondary);
+  color: var(--text-main);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  font-family: var(--font-thai);
+}
+.feedback-dialog::backdrop { background: rgba(5, 8, 15, 0.75); }
+.feedback-dialog .feedback-form { margin-top: 0; }
+.dialog-title { font-size: 1.2rem; color: var(--gold-light); margin-bottom: 0.25rem; }
+.dialog-section { color: var(--text-muted); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
+.dialog-actions button { width: auto; padding: 12px 22px; }
+
+.star-field { border: 0; }
+/* ดาวเรียง 5→1 ใน HTML แล้วกลับด้านด้วย row-reverse เพื่อให้ hover/เลือกแล้วติดดาวทางซ้ายทั้งหมด */
+.stars { display: inline-flex; flex-direction: row-reverse; gap: 0.25rem; }
+.stars input { position: absolute; opacity: 0; pointer-events: none; }
+.stars label { font-size: 2rem; line-height: 1; color: var(--text-dim); cursor: pointer; transition: var(--transition); }
+.stars label:hover,
+.stars label:hover ~ label,
+.stars input:checked ~ label { color: var(--gold-primary); }
+.stars input:focus-visible + label { outline: 2px solid var(--gold-primary); outline-offset: 2px; border-radius: 4px; }
+
+@media (max-width: 760px) {
+  .feedback-box { padding: 1rem; }
+  .feedback-dialog { padding: 1.1rem; }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions button { width: 100%; justify-content: center; }
+}
