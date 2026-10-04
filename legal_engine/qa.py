@@ -61,6 +61,8 @@ def classify_llm_error(e: Exception) -> Tuple[str, str]:
         code = "LLM_REFUSED"
     elif any(k in text for k in ("cuda", "out of memory", "unable to allocate", "failed to allocate", "insufficient memory")):
         code = "LLM_OUT_OF_MEMORY"
+    elif isinstance(e, groq_llm.GroqKeyMissing):
+        code = "LLM_AUTH"
     elif "ratelimit" in name.lower() or "429" in text:
         code = "LLM_RATE_LIMIT"
     elif "authentication" in name.lower() or "permissiondenied" in name.lower() or "401" in text:

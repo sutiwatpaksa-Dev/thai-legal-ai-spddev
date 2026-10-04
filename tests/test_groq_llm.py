@@ -46,7 +46,8 @@ ANSWER_653 = {"answer": "ต้องมีหลักฐานเป็นห�
 class TestCallGroq(unittest.TestCase):
     def call(self, response, summary=False, model=""):
         fake = FakeGroq(response)
-        with mock.patch.object(groq_llm, "_get_client", return_value=fake):
+        with mock.patch.object(groq_llm, "_get_client", return_value=fake), \
+             mock.patch.dict(os.environ, {"GROQ_API_KEY": "placeholder-not-a-real-key"}):
             out = groq_llm.call_groq("SYS", "USER", summary=summary, model=model)
         return out, fake.calls[0]
 
@@ -84,10 +85,23 @@ class TestGroqPipeline(unittest.TestCase):
         fake = FakeGroq(fake_completion(ANSWER_653))
         qa = LegalQA(HybridLegalRetriever(db.list_statutes()))
         with mock.patch.object(qa_module, "LLM_PROVIDER", "groq"), \
-             mock.patch.object(groq_llm, "_get_client", return_value=fake):
+             mock.patch.object(groq_llm, "_get_client", return_value=fake), \
+             mock.patch.dict(os.environ, {"GROQ_API_KEY": "placeholder-not-a-real-key"}):
             r = qa.ask("กู้ยืมเงินเกินสองพันบาทต้องมีหลักฐานอะไร", model="openai/gpt-oss-20b")
         self.assertEqual((r["provider"], r["model"], r["status"]), ("groq", "openai/gpt-oss-20b", "CITATIONS_VERIFIED"))
         self.assertEqual(fake.calls[0]["model"], "openai/gpt-oss-20b")
+
+    def test_missing_key_is_clear_auth_error(self):
+        fake = FakeGroq(fake_completion(ANSWER_653))
+        qa = LegalQA(HybridLegalRetriever(db.list_statutes()))
+        with mock.patch.object(qa_module, "LLM_PROVIDER", "groq"), \
+             mock.patch.object(groq_llm, "_get_client", return_value=fake), \
+             mock.patch.object(groq_llm, "_windows_user_env", return_value=""), \
+             mock.patch.dict(os.environ, {"GROQ_API_KEY": ""}):
+            r = qa.ask("กู้ยืมเงินเกินสองพันบาทต้องมีหลักฐานอะไร")
+        self.assertEqual((r["status"], r["error_code"]), ("LLM_ERROR", "LLM_AUTH"))
+        self.assertEqual(fake.calls, [])            # ไม่เรียก API เมื่อไม่มี key
+        self.assertTrue(r["retrieved_statutes"])    # ตัวบทที่ค้นได้ยังส่งกลับให้อ่าน
 
     def test_model_ignored_for_other_providers(self):
         with mock.patch.object(qa_module, "LLM_PROVIDER", "ollama"):

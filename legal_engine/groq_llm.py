@@ -39,6 +39,10 @@ if DEFAULT_MODEL not in GROQ_MODELS:
     raise ValueError(f"LEGAL_AI_GROQ_MODEL ต้องเป็นหนึ่งใน {', '.join(GROQ_MODELS)}")
 
 
+class GroqKeyMissing(RuntimeError):
+    """ยังไม่ได้ตั้งค่า GROQ_API_KEY"""
+
+
 def _api_key() -> str:
     return os.environ.get("GROQ_API_KEY") or _windows_user_env("GROQ_API_KEY")
 
@@ -67,6 +71,8 @@ def call_groq(system_prompt: str, user_content: str, summary: bool, model: str =
     model = model or DEFAULT_MODEL
     if model not in GROQ_MODELS:
         raise ValueError(f"โมเดล {model} ไม่อยู่ในรายการที่อนุญาต")
+    if not credentials_configured():
+        raise GroqKeyMissing("ยังไม่ได้ตั้งค่า GROQ_API_KEY")
     resp = _get_client().chat.completions.create(
         model=model,
         max_completion_tokens=GROQ_MAX_TOKENS,

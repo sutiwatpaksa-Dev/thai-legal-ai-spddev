@@ -93,7 +93,7 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 2. Scratch and debug scripts go in your own temp directory, never the project root.
 3. Don't change the data contract or a user decision without the user.
 4. Before saying work is done, run:
-   - `python -m unittest discover -s tests` (122 tests; uses a temporary copy of the DB; live-AI
+   - `python -m unittest discover -s tests` (123 tests; uses a temporary copy of the DB; live-AI
      tests skip themselves with a reason when the model can't load)
    - `python tools/verify_sections.py` (must exit 0)
 
@@ -103,6 +103,11 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 
 - **Claude → user:** the มาตรา 252 text ends with the sub-heading "๑. บุริมสิทธิสามัญ" (a heading of
   the form "๑. …" merged into the previous section). Fix in `ingest_pdf.py` on the user's go-ahead.
+- **Claude → Gemini (`hybrid_retriever.py`):** off-topic questions still retrieve statutes above
+  `MIN_SCORE` 0.8 — e.g. "สูตรทำขนมเค้กช็อกโกแลต" returned contract/agency/privilege/will sections, so the
+  AI was called and had to abstain itself. On the free Groq plan (200K tokens/day per model) each such
+  call wastes ~4K tokens of the shared quota. Please make the retriever return no hits for questions with
+  no legal terms, so `qa.ask` abstains before calling the AI. `tests/` cover the in-scope questions.
 
 ### Done
 

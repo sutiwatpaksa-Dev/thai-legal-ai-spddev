@@ -164,13 +164,19 @@ function relevanceTag(score, topScore) {
 function initTabs() {
   const tabs = document.querySelectorAll(".tab-btn");
   const contents = document.querySelectorAll(".tab-content");
+  // จำตำแหน่งเลื่อนของแต่ละแท็บ — เปิดแท็บครั้งแรกเริ่มที่ด้านบน ไม่ค้างตำแหน่งของแท็บก่อนหน้า
+  const scrollByTab = {};
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
+      const current = document.querySelector(".tab-btn.active");
+      if (current === tab) return;
+      if (current) scrollByTab[current.dataset.tab] = window.scrollY;
       tabs.forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
       contents.forEach(c => c.classList.remove("active"));
       tab.classList.add("active");
       tab.setAttribute("aria-selected", "true");
       document.getElementById(tab.dataset.tab)?.classList.add("active");
+      window.scrollTo(0, scrollByTab[tab.dataset.tab] || 0);
     });
   });
 }
