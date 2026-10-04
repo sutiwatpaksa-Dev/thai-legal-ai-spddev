@@ -271,8 +271,10 @@ def active_provider() -> str:
     return LLM_PROVIDER
 
 
-def active_model() -> str:
-    return claude_llm.CLAUDE_MODEL if active_provider() == "anthropic" else LLM_MODEL
+def active_model(mode: str = "answer") -> str:
+    if active_provider() != "anthropic":
+        return LLM_MODEL
+    return claude_llm.CLAUDE_MODEL_SUMMARY if mode == "summary" else claude_llm.CLAUDE_MODEL
 
 
 def _call_llm(question: str, statutes: List[Dict[str, Any]], feedback: str = "",
@@ -372,7 +374,7 @@ class LegalQA:
                 seen.add(s["id"]); statutes.append(s)
         statutes = statutes[:SUMMARY_CONTEXT if mode == "summary" else TOP_K]
 
-        base = {"question": question, "mode": mode, "provider": active_provider(), "model": active_model(),
+        base = {"question": question, "mode": mode, "provider": active_provider(), "model": active_model(mode),
                 "retrieved_statutes": statutes}
         if not statutes:
             return {**base, "status": "ABSTAIN", "answer": "ไม่พบตัวบทที่เกี่ยวข้องในฐานข้อมูล จึงไม่ตอบเพื่อป้องกันความคลาดเคลื่อน",

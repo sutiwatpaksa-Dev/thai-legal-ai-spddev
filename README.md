@@ -80,8 +80,10 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 |---|---|---|
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` | — | ใช้ Claude API |
 | `LEGAL_AI_LLM_PROVIDER` | `auto` | `auto` / `anthropic` / `ollama` |
-| `LEGAL_AI_CLAUDE_MODEL` | `claude-opus-5-5` | โมเดล Claude |
-| `LEGAL_AI_CLAUDE_EFFORT` | `high` | ระดับ effort ของ Claude |
+| `LEGAL_AI_CLAUDE_MODEL` | `claude-opus-5-5` | โมเดล Claude (โหมดตอบคำถาม) |
+| `LEGAL_AI_CLAUDE_MODEL_SUMMARY` | ค่าเดียวกับ `LEGAL_AI_CLAUDE_MODEL` | โมเดล Claude โหมดสรุป/อธิบาย |
+| `LEGAL_AI_CLAUDE_EFFORT` | `high` | ระดับ effort ของ Claude (โหมดตอบคำถาม) |
+| `LEGAL_AI_CLAUDE_EFFORT_SUMMARY` | ค่าเดียวกับ `LEGAL_AI_CLAUDE_EFFORT` | ระดับ effort โหมดสรุป/อธิบาย |
 | `LEGAL_AI_LLM_BASE_URL` | `http://localhost:11434/v1` | ที่อยู่ Ollama |
 | `LEGAL_AI_LLM_MODEL` | `qwen2.5:7b` | โมเดล Ollama |
 | `LEGAL_AI_LLM_TIMEOUT` | `180` | timeout (วินาที) ของ Ollama |

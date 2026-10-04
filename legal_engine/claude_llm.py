@@ -15,7 +15,10 @@ from typing import Any, Dict
 import anthropic
 
 CLAUDE_MODEL = os.environ.get("LEGAL_AI_CLAUDE_MODEL", "claude-opus-5-5")
+# โหมดสรุป/อธิบายใช้โมเดลแยกได้ (ค่าเริ่มต้น: โมเดลเดียวกับโหมดตอบคำถาม)
+CLAUDE_MODEL_SUMMARY = os.environ.get("LEGAL_AI_CLAUDE_MODEL_SUMMARY") or CLAUDE_MODEL
 CLAUDE_EFFORT = os.environ.get("LEGAL_AI_CLAUDE_EFFORT", "high")
+CLAUDE_EFFORT_SUMMARY = os.environ.get("LEGAL_AI_CLAUDE_EFFORT_SUMMARY") or CLAUDE_EFFORT
 CLAUDE_MAX_TOKENS = 16000
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -110,12 +113,12 @@ def _get_client() -> anthropic.Anthropic:
 
 def call_claude(system_prompt: str, user_content: str, summary: bool) -> Dict[str, Any]:
     response = _get_client().beta.messages.create(
-        model=CLAUDE_MODEL,
+        model=CLAUDE_MODEL_SUMMARY if summary else CLAUDE_MODEL,
         max_tokens=CLAUDE_MAX_TOKENS,
         betas=[FALLBACK_BETA],
         fallbacks="default",
         output_config={
-            "effort": CLAUDE_EFFORT,
+            "effort": CLAUDE_EFFORT_SUMMARY if summary else CLAUDE_EFFORT,
             "format": {"type": "json_schema", "schema": SUMMARY_SCHEMA if summary else ANSWER_SCHEMA},
         },
         system=system_prompt,

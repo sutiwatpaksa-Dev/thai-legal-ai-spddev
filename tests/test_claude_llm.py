@@ -63,6 +63,17 @@ class TestCallClaude(unittest.TestCase):
         self.assertIs(req["output_config"]["format"]["schema"], claude_llm.SUMMARY_SCHEMA)
         self.assertEqual(out["title"], "t")
 
+    def test_summary_uses_its_own_model(self):
+        with mock.patch.multiple(claude_llm, CLAUDE_MODEL="claude-sonnet-5-5", CLAUDE_MODEL_SUMMARY="claude-opus-5-5",
+                                 CLAUDE_EFFORT="high", CLAUDE_EFFORT_SUMMARY="medium"):
+            _, answer_req = self.call(fake_response({"answer": "a", "citations": [], "insufficient": False}))
+            payload = {"title": "t", "summary": "s", "key_points": [], "example": "", "notes": [], "insufficient": False}
+            _, summary_req = self.call(fake_response(payload), summary=True)
+        self.assertEqual(answer_req["model"], "claude-sonnet-5-5")
+        self.assertEqual(summary_req["model"], "claude-opus-5-5")
+        self.assertEqual(answer_req["output_config"]["effort"], "high")
+        self.assertEqual(summary_req["output_config"]["effort"], "medium")
+
     def test_refusal_raises(self):
         with self.assertRaises(claude_llm.ClaudeRefusal):
             self.call(fake_response({}, stop_reason="refusal", category="cyber"))
