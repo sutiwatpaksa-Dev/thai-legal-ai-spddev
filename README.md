@@ -56,7 +56,7 @@ python -m venv .venv
 
 ## ☁️ Deploy บน Vercel
 
-ไฟล์ที่เกี่ยวข้อง: `vercel.json` (ส่งทุก request ไปที่ `api/index.py`), `api/index.py`, `.vercelignore`
+Vercel ตรวจพบ FastAPI เองและเริ่มแอปจาก `app.py` — ไฟล์ที่เกี่ยวข้อง: `vercel.json` (ตั้ง `maxDuration`), `.vercelignore`
 
 1. ตั้ง Environment Variables ใน Vercel → Project → Settings → Environment Variables
    - `ANTHROPIC_API_KEY` — **จำเป็น** (Vercel ไม่มี Ollama)
@@ -99,8 +99,7 @@ python -m venv .venv
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `app.py` | FastAPI — ทุก endpoint และให้บริการหน้าเว็บ |
-| `api/index.py` | จุดเข้าสำหรับ Vercel |
+| `app.py` | FastAPI — ทุก endpoint, ให้บริการหน้าเว็บ และเป็นจุดเริ่มแอปบน Vercel |
 | `legal_engine/qa.py` | ถาม-ตอบ ตรวจอ้างอิงและความครบถ้วน |
 | `legal_engine/claude_llm.py` | เชื่อมต่อ Claude API |
 | `legal_engine/hybrid_retriever.py` | ค้นหาตัวบท |

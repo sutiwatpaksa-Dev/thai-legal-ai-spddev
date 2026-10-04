@@ -1,4 +1,4 @@
-# สิ่งที่ไม่ต้องอัปโหลดขึ้น Vercel (แอปใช้แค่ app.py, api/, legal_engine/, static/, data/legal_ai.db)
+# สิ่งที่ไม่ต้องอัปโหลดขึ้น Vercel (แอปใช้แค่ app.py, legal_engine/, static/, data/legal_ai.db)
 .venv/
 venv/
 env/

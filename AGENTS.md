@@ -43,7 +43,8 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 - **AI health**: `GET /api/status?probe=true` makes the local model generate 1 token (forces a real
   load); every `/api/ask` result also updates health. Raw errors go to the server log only
   (`LEGAL_AI_DEBUG=1` shows them to admins).
-- **Vercel**: needs `ANTHROPIC_API_KEY` (no Ollama there). The DB is copied to `/tmp` with history cleared;
+- **Vercel**: auto-detects FastAPI and starts from `app.py` (no `api/` entrypoint, no rewrites); `app.py`
+  points PyThaiNLP at `/tmp` before importing `legal_engine`. Needs `ANTHROPIC_API_KEY` (no Ollama there). The DB is copied to `/tmp` with history cleared;
   statute writes and `/api/history` return 403 when `VERCEL` is set (public site, no login).
 - **Known environment issue**: this PC often lacks RAM/VRAM to load `qwen2.5:7b`
   (`LLM_OUT_OF_MEMORY`). Not a code bug — free memory, restart Ollama, or use the Claude API.
@@ -55,7 +56,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 | PDF extraction and import | `legal_engine/pdf_extract.py`, `ingest_pdf.py` |
 | Section verification | `tools/verify_sections.py` |
 | Database layer and schema | `legal_engine/database.py`, `data/legal_ai.db` |
-| API (all endpoints) and Vercel deploy | `app.py`, `api/index.py`, `vercel.json`, `.vercelignore` |
+| API (all endpoints) and Vercel deploy | `app.py`, `vercel.json`, `.vercelignore` |
 | Q&A pipeline, citation and completeness checks | `legal_engine/qa.py`, `legal_engine/quantities.py` |
 | Claude API connection | `legal_engine/claude_llm.py` |
 | Web UI (owned by Claude since the user's 2026-10-04 request) | `static/**` |

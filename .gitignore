@@ -28,3 +28,6 @@ Thumbs.db
 
 # ต้นฉบับ PDF ใช้เฉพาะตอนนำเข้าบนเครื่อง (แอปอ่านจาก data/legal_ai.db)
 code_lawyer.pdf
+
+.vercel
+.env*

@@ -19,6 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+# Vercel เขียนไฟล์ได้เฉพาะ /tmp — PyThaiNLP สร้างโฟลเดอร์ข้อมูลตั้งแต่ตอน import
+# จึงต้องตั้งก่อน import legal_engine (Vercel เริ่มแอปจากไฟล์นี้โดยตรง)
+if os.environ.get("VERCEL"):
+    os.environ.setdefault("PYTHAINLP_DATA", "/tmp/pythainlp-data")
+
 from legal_engine import claude_llm
 from legal_engine import database as db
 from legal_engine import qa as qa_module
