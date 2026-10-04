@@ -72,6 +72,11 @@
             <label for="questionInput" class="form-label">คำถาม:</label>
             <textarea id="questionInput" class="legal-input" aria-describedby="questionHint" placeholder="เช่น 'กู้ยืมเงินเกินสองพันบาทต้องมีหลักฐานอะไร' หรือ 'มาตรา 420 บัญญัติว่าอย่างไร'"></textarea>
             <p id="questionHint" class="field-hint" hidden>พิมพ์คำถามก่อน หรือเลือกตัวอย่างด้านบน</p>
+            <div id="modelPicker" class="model-picker" hidden>
+              <label for="modelSelect" class="form-label">โมเดล AI:</label>
+              <select id="modelSelect" class="kb-select" aria-describedby="modelDescription"></select>
+              <p id="modelDescription" class="field-hint"></p>
+            </div>
             <div class="ask-actions">
               <button type="submit" class="btn-primary" id="askAiBtn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>

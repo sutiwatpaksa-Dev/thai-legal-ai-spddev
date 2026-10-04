@@ -264,6 +264,11 @@ main {
   color: #fbbf24;
 }
 
+/* Model picker */
+.model-picker { margin-top: 1rem; }
+.model-picker .kb-select { width: 100%; max-width: 320px; }
+.model-picker .field-hint { color: var(--text-muted); }
+
 /* Sample prompt chips */
 .sample-prompts-wrap {
   margin-bottom: 1.25rem;

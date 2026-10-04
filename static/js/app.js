@@ -193,10 +193,35 @@ function applyHealth(llm) {
   const h = llm.health || {};
   if (h.ok === true) setStatusBadge("ok", "AI พร้อม", `โมเดล: ${llm.model}`);
   else if (h.ok === false) setStatusBadge("error", "AI ใช้งานไม่ได้", `${h.message || ""} (ค้นหาตัวบทยังใช้ได้)`);
-  else if (llm.provider === "anthropic")
-    // Claude ไม่ถูก probe (เสียค่าใช้จ่าย) — ตั้งค่าแล้วแต่ยังไม่ได้ถามจริง
-    setStatusBadge("checking", "Claude ตั้งค่าแล้ว · ทดสอบเมื่อถามครั้งแรก", `โมเดล: ${llm.model}`);
+  else if (llm.provider === "anthropic" || llm.provider === "groq")
+    // Claude/Groq ไม่ถูก probe (เสียค่าใช้จ่าย/กินโควตา) — ตั้งค่าแล้วแต่ยังไม่ได้ถามจริง
+    setStatusBadge("checking", `${llm.provider === "groq" ? "Groq" : "Claude"} ตั้งค่าแล้ว · ทดสอบเมื่อถามครั้งแรก`, `โมเดล: ${llm.model}`);
   else setStatusBadge("checking", "กำลังตรวจ AI...", `โมเดล: ${llm.model}`);
+}
+
+/** ตัวเลือกโมเดล (แสดงเมื่อ server ส่งรายการโมเดลมา เช่น Groq) */
+function initModelPicker(models) {
+  const picker = document.getElementById("modelPicker");
+  const select = document.getElementById("modelSelect");
+  const desc = document.getElementById("modelDescription");
+  if (!models || !models.length) { picker.hidden = true; return; }
+  select.innerHTML = models.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}</option>`).join("");
+  let saved = null;
+  try { saved = localStorage.getItem("legalAiModel"); } catch (_) { /* ไม่มี storage ก็ใช้ค่าแรก */ }
+  if (saved && models.some(m => m.id === saved)) select.value = saved;
+  const sync = () => {
+    const m = models.find(x => x.id === select.value);
+    desc.textContent = m ? m.description : "";
+    try { localStorage.setItem("legalAiModel", select.value); } catch (_) { /* ไม่จำค่าได้ก็ไม่เป็นไร */ }
+  };
+  select.onchange = sync;
+  sync();
+  picker.hidden = false;
+}
+
+function selectedModel() {
+  const picker = document.getElementById("modelPicker");
+  return picker.hidden ? undefined : document.getElementById("modelSelect").value;
 }
 
 async function loadSystemStatus() {
@@ -204,6 +229,7 @@ async function loadSystemStatus() {
     const quick = await (await fetch("/api/status")).json();
     statuteTotal = quick.statutes;
     applyHealth(quick.llm);
+    initModelPicker(quick.llm.models);
     if (quick.llm.provider === "ollama") {
       // ทดสอบโมเดลจริง (โหลดเข้าหน่วยความจำ) — อาจใช้เวลา
       const probed = await (await fetch("/api/status?probe=true")).json();
@@ -297,7 +323,7 @@ function banner(cls, icon, title, sub = "", right = "") {
 async function runAsk(question, askBtn, searchBtn, syncButtons) {
   const done = setBusy(askBtn, searchBtn, "AI กำลังอ่านตัวบท...", syncButtons);
   try {
-    const data = await postJson("/api/ask", { question });
+    const data = await postJson("/api/ask", { question, model: selectedModel() });
     if (data.llm_health) applyHealth({ health: data.llm_health, model: data.model });
     showResult(renderAnswer(data));
   } catch (err) {

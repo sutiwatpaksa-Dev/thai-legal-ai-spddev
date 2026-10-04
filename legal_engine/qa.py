@@ -20,11 +20,13 @@ from typing import Any, Dict, List, Tuple
 
 from . import claude_llm
 from . import database as db
+from . import groq_llm
 from . import quantities
 from .hybrid_retriever import HybridLegalRetriever
 
-# ผู้ให้บริการโมเดล: "anthropic" (Claude API), "ollama" (โมเดลในเครื่อง)
-# หรือ "auto" = ใช้ Claude เมื่อตั้งค่า ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN แล้ว มิฉะนั้นใช้ Ollama
+# ผู้ให้บริการโมเดล: "groq" (Groq — ฟรีภายใต้โควตา), "ollama" (โมเดลในเครื่อง — ฟรี)
+# หรือ "auto" = ใช้ Groq เมื่อตั้งค่า GROQ_API_KEY แล้ว มิฉะนั้นใช้ Ollama
+# "anthropic" (Claude API) เสียค่าใช้จ่าย — ใช้เฉพาะเมื่อตั้งค่านี้ตรงๆ เท่านั้น ไม่ถูกเลือกอัตโนมัติ
 LLM_PROVIDER = os.environ.get("LEGAL_AI_LLM_PROVIDER", "auto")
 LLM_BASE_URL = os.environ.get("LEGAL_AI_LLM_BASE_URL", "http://localhost:11434/v1")
 LLM_MODEL = os.environ.get("LEGAL_AI_LLM_MODEL", "qwen2.5:7b")
@@ -45,6 +47,7 @@ LLM_ERROR_MESSAGES = {
     "LLM_UNREACHABLE": "เชื่อมต่อบริการ AI ไม่ได้",
     "LLM_AUTH": "ยืนยันตัวตนกับบริการ AI ไม่ผ่าน — ตรวจการตั้งค่า API key",
     "LLM_REFUSED": "บริการ AI ปฏิเสธคำขอนี้",
+    "LLM_RATE_LIMIT": "ใช้งาน AI เกินโควตาชั่วคราว — รอสักครู่แล้วลองใหม่ หรือเลือกโมเดลอื่น",
     "LLM_TIMEOUT": "บริการ AI ตอบช้าเกินกำหนด",
     "LLM_BAD_OUTPUT": "AI ตอบกลับในรูปแบบที่ระบบอ่านไม่ได้",
     "LLM_FAILED": "บริการ AI ขัดข้อง",
@@ -58,6 +61,8 @@ def classify_llm_error(e: Exception) -> Tuple[str, str]:
         code = "LLM_REFUSED"
     elif any(k in text for k in ("cuda", "out of memory", "unable to allocate", "failed to allocate", "insufficient memory")):
         code = "LLM_OUT_OF_MEMORY"
+    elif "ratelimit" in name.lower() or "429" in text:
+        code = "LLM_RATE_LIMIT"
     elif "authentication" in name.lower() or "permissiondenied" in name.lower() or "401" in text:
         code = "LLM_AUTH"
     elif "timeout" in name.lower() or "timed out" in text:
@@ -267,23 +272,28 @@ def _compose_summary_text(s: Dict[str, Any]) -> str:
 
 def active_provider() -> str:
     if LLM_PROVIDER == "auto":
-        return "anthropic" if claude_llm.credentials_configured() else "ollama"
+        return "groq" if groq_llm.credentials_configured() else "ollama"
     return LLM_PROVIDER
 
 
-def active_model(mode: str = "answer") -> str:
-    if active_provider() != "anthropic":
+def active_model(mode: str = "answer", model: str = "") -> str:
+    provider = active_provider()
+    if provider == "groq":
+        return model or groq_llm.DEFAULT_MODEL
+    if provider != "anthropic":
         return LLM_MODEL
     return claude_llm.CLAUDE_MODEL_SUMMARY if mode == "summary" else claude_llm.CLAUDE_MODEL
 
 
 def _call_llm(question: str, statutes: List[Dict[str, Any]], feedback: str = "",
-              system_prompt: str = SYSTEM_PROMPT) -> Dict[str, Any]:
+              system_prompt: str = SYSTEM_PROMPT, model: str = "") -> Dict[str, Any]:
     user = f"[ตัวบท]\n{_context(statutes)}\n\n[คำถาม]\n{question}"
     if feedback:
         user += f"\n\n[ข้อแก้ไข]\n{feedback}"
     if active_provider() == "anthropic":
         return claude_llm.call_claude(system_prompt, user, summary=system_prompt is SUMMARY_PROMPT)
+    if active_provider() == "groq":
+        return groq_llm.call_groq(system_prompt, user, summary=system_prompt is SUMMARY_PROMPT, model=model)
 
     from openai import OpenAI
 
@@ -355,11 +365,14 @@ class LegalQA:
     def __init__(self, retriever: HybridLegalRetriever):
         self.retriever = retriever
 
-    def ask(self, question: str, mode: str = "auto") -> Dict[str, Any]:
+    def ask(self, question: str, mode: str = "auto", model: str = "") -> Dict[str, Any]:
         """
         mode: "answer" ตอบคำถาม, "summary" สรุป/อธิบายมาตรา,
               "auto" เลือกสรุปเมื่อคำถามมีคำว่า สรุป/อธิบาย/ขยายความ
+        model: โมเดล Groq ที่ผู้ใช้เลือก (ใช้เฉพาะ provider "groq"; ว่าง = ค่าเริ่มต้น)
         """
+        if active_provider() != "groq":
+            model = ""
         if mode == "auto":
             mode = "summary" if _SUMMARY_RE.search(question) else "answer"
         explicit = _explicit_sections(question)
@@ -374,7 +387,7 @@ class LegalQA:
                 seen.add(s["id"]); statutes.append(s)
         statutes = statutes[:SUMMARY_CONTEXT if mode == "summary" else TOP_K]
 
-        base = {"question": question, "mode": mode, "provider": active_provider(), "model": active_model(mode),
+        base = {"question": question, "mode": mode, "provider": active_provider(), "model": active_model(mode, model),
                 "retrieved_statutes": statutes}
         if not statutes:
             return {**base, "status": "ABSTAIN", "answer": "ไม่พบตัวบทที่เกี่ยวข้องในฐานข้อมูล จึงไม่ตอบเพื่อป้องกันความคลาดเคลื่อน",
@@ -385,7 +398,7 @@ class LegalQA:
         to_check = _summary_to_check if mode == "summary" else (lambda o: o)
 
         try:
-            raw = _call_llm(question, statutes, length_hint, system_prompt=prompt)
+            raw = _call_llm(question, statutes, length_hint, system_prompt=prompt, model=model)
         except Exception as e:  # โหลดโมเดลไม่ได้ / เชื่อมต่อไม่ได้ / โมเดลตอบไม่ใช่ JSON
             # การค้นตัวบททำงานสำเร็จแล้ว — ส่ง retrieved_statutes กลับไปให้ผู้ใช้อ่านเองได้
             return {**base, "status": "LLM_ERROR", "answer": "", "citations": [],
@@ -417,7 +430,7 @@ class LegalQA:
             feedback = " ".join(issues)
             try:
                 retry_raw = _call_llm(question, statutes, " ".join(filter(None, [length_hint, feedback])),
-                                      system_prompt=prompt)
+                                      system_prompt=prompt, model=model)
                 retry = to_check(retry_raw)
                 retry_checks = _verify(retry, statutes)
                 raw, llm_out, checks = retry_raw, retry, retry_checks

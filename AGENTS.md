@@ -26,7 +26,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 | 2026-10-04 | Only the two sections above. |
 | 2026-10-04 | **No mock data.** Statute text comes only from a source document; answers only from the real Q&A pipeline; no hard-coded verdicts, scores or answers. |
 | 2026-10-04 | **Strict abstention & Neighboring context**: If any quote fails verification or a section is invented, AI is retried once with feedback; if it still fails, it must strictly ABSTAIN and not display any hallucinated answer (no yellow partial warning banner with false content). Retrieved statutes are enriched with the foundational section (e.g. ม.341 for หักกลบลบหนี้) and neighboring sections of the same chapter/part. Quotes are deduplicated before scoring. |
-| 2026-10-04 | Q&A uses the **Claude API** (`claude-opus-5-5`) when `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` is set, otherwise Ollama `qwen2.5:7b`. Override with `LEGAL_AI_LLM_PROVIDER=auto\|anthropic\|ollama`. |
+| 2026-10-04 | **Free models only — the user does not want to pay.** Q&A uses **Groq** (free plan) when `GROQ_API_KEY` is set, otherwise Ollama `qwen2.5:7b`. Users pick the Groq model in the web UI: `openai/gpt-oss-120b` (default), `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`, each shown with a description. The paid Claude API is never chosen automatically (only with an explicit `LEGAL_AI_LLM_PROVIDER=anthropic`). Override with `LEGAL_AI_LLM_PROVIDER=auto\|groq\|ollama`. Supersedes the earlier Claude-first decision. |
 | 2026-10-04 | Fixes from the user's UI test report (error handling, health badge, mobile layout, search, accessibility) are implemented; the Knowledge Base tab is named **คลังตัวบทกฎหมาย** because only the civil code is complete. |
 
 ## Current state
@@ -36,7 +36,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
   criminal/PDPA/labour sections (no source document) were removed at 5:34–5:39 PM, so every
   section now comes from a source document.
 - **API key:** never put an API key in any file in this folder (it is synced to OneDrive and read
-  by both agents). The app reads `ANTHROPIC_API_KEY` from the environment only.
+  by both agents). The app reads `GROQ_API_KEY` (and the opt-in `ANTHROPIC_API_KEY`) from the environment only.
 - **Q&A safety checks** (`legal_engine/qa.py`): every quote must exist in the cited section;
   sections not provided are rejected; answers that drop a time limit, amount or percentage from a
   cited section are retried once, then flagged; failures return `ABSTAIN`.
@@ -44,10 +44,10 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
   load); every `/api/ask` result also updates health. Raw errors go to the server log only
   (`LEGAL_AI_DEBUG=1` shows them to admins).
 - **Vercel**: auto-detects FastAPI and starts from `app.py` (no `api/` entrypoint, no rewrites); `app.py`
-  points PyThaiNLP at `/tmp` before importing `legal_engine`. Needs `ANTHROPIC_API_KEY` (no Ollama there). The DB is copied to `/tmp` with history cleared;
+  points PyThaiNLP at `/tmp` before importing `legal_engine`. Needs `GROQ_API_KEY` and `LEGAL_AI_LLM_PROVIDER=groq` (no Ollama there). The DB is copied to `/tmp` with history cleared;
   statute writes and `/api/history` return 403 when `VERCEL` is set (public site, no login).
 - **Known environment issue**: this PC often lacks RAM/VRAM to load `qwen2.5:7b`
-  (`LLM_OUT_OF_MEMORY`). Not a code bug — free memory, restart Ollama, or use the Claude API.
+  (`LLM_OUT_OF_MEMORY`). Not a code bug — free memory, restart Ollama, or use Groq.
 
 ## Scope: Claude — data, backend, Q&A, web UI, tests
 
@@ -58,7 +58,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 | Database layer and schema | `legal_engine/database.py`, `data/legal_ai.db` |
 | API (all endpoints) and Vercel deploy | `app.py`, `vercel.json`, `.vercelignore` |
 | Q&A pipeline, citation and completeness checks | `legal_engine/qa.py`, `legal_engine/quantities.py` |
-| Claude API connection | `legal_engine/claude_llm.py` |
+| Groq and Claude API connections | `legal_engine/groq_llm.py`, `legal_engine/claude_llm.py` |
 | Web UI (owned by Claude since the user's 2026-10-04 request) | `static/**` |
 | Test suite | `tests/**` |
 
@@ -93,7 +93,7 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 2. Scratch and debug scripts go in your own temp directory, never the project root.
 3. Don't change the data contract or a user decision without the user.
 4. Before saying work is done, run:
-   - `python -m unittest discover -s tests` (111 tests; uses a temporary copy of the DB; live-AI
+   - `python -m unittest discover -s tests` (122 tests; uses a temporary copy of the DB; live-AI
      tests skip themselves with a reason when the model can't load)
    - `python tools/verify_sections.py` (must exit 0)
 

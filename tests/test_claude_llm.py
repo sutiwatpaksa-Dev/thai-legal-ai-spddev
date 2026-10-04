@@ -12,6 +12,7 @@ from unittest import mock
 
 from legal_engine import claude_llm
 from legal_engine import database as db
+from legal_engine import groq_llm
 from legal_engine import qa as qa_module
 from legal_engine.hybrid_retriever import HybridLegalRetriever
 from legal_engine.qa import LegalQA
@@ -97,25 +98,27 @@ class TestCallClaude(unittest.TestCase):
 
 
 class TestProviderSelection(unittest.TestCase):
-    def test_key_from_windows_user_settings_is_used(self):
+    def test_groq_key_from_windows_user_settings_is_used(self):
         """terminal ใน IDE ที่เปิดก่อน setx ไม่มีตัวแปรใหม่ — ต้องอ่านจากค่าระดับผู้ใช้ได้"""
-        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": ""}), \
-             mock.patch.object(claude_llm, "_windows_user_env", return_value="placeholder-not-a-real-key"), \
+        with mock.patch.dict(os.environ, {"GROQ_API_KEY": ""}), \
+             mock.patch.object(groq_llm, "_windows_user_env", return_value="placeholder-not-a-real-key"), \
              mock.patch.object(qa_module, "LLM_PROVIDER", "auto"):
-            self.assertEqual(qa_module.active_provider(), "anthropic")
+            self.assertEqual(qa_module.active_provider(), "groq")
+            self.assertEqual(qa_module.active_model(), groq_llm.DEFAULT_MODEL)
 
     def test_auto_without_credentials_uses_ollama(self):
-        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": ""}), \
-             mock.patch.object(claude_llm, "_windows_user_env", return_value=""), \
+        with mock.patch.dict(os.environ, {"GROQ_API_KEY": ""}), \
+             mock.patch.object(groq_llm, "_windows_user_env", return_value=""), \
              mock.patch.object(qa_module, "LLM_PROVIDER", "auto"):
             self.assertEqual(qa_module.active_provider(), "ollama")
             self.assertEqual(qa_module.active_model(), qa_module.LLM_MODEL)
 
-    def test_auto_with_credentials_uses_claude(self):
-        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "placeholder-not-a-real-key"}), \
+    def test_auto_never_picks_paid_claude(self):
+        """ผู้ใช้ไม่ต้องการเสียเงิน: มี key ของ Claude ก็ไม่ใช้ Claude อัตโนมัติ"""
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "placeholder-not-a-real-key", "GROQ_API_KEY": ""}), \
+             mock.patch.object(groq_llm, "_windows_user_env", return_value=""), \
              mock.patch.object(qa_module, "LLM_PROVIDER", "auto"):
-            self.assertEqual(qa_module.active_provider(), "anthropic")
-            self.assertEqual(qa_module.active_model(), "claude-opus-5-5")
+            self.assertEqual(qa_module.active_provider(), "ollama")
 
     def test_end_to_end_through_claude_path(self):
         """ask() -> _call_llm -> call_claude -> ตรวจอ้างอิงเหมือนเดิม"""

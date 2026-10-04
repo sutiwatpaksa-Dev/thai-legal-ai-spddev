@@ -30,12 +30,17 @@
 
 ## 🤖 โมเดล AI
 
+ใช้เฉพาะโมเดลฟรี (ไม่เสียค่าใช้จ่าย):
+
 | เงื่อนไข | โมเดลที่ใช้ |
 |---|---|
-| มี `ANTHROPIC_API_KEY` (หรือ `ANTHROPIC_AUTH_TOKEN`) | Claude API — `claude-opus-5-5` |
+| มี `GROQ_API_KEY` | Groq (แผน Free) — ผู้ใช้เลือกโมเดลบนหน้าเว็บ: `openai/gpt-oss-120b` (ค่าเริ่มต้น), `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` |
 | ไม่มี key | Ollama ในเครื่อง — `qwen2.5:7b` ที่ `http://localhost:11434` |
 
-บังคับเลือกได้ด้วย `LEGAL_AI_LLM_PROVIDER=auto|anthropic|ollama`
+บังคับเลือกได้ด้วย `LEGAL_AI_LLM_PROVIDER=auto|groq|ollama`
+แผน Free ของ Groq จำกัด 30 คำขอ/นาที, 1,000 คำขอ/วัน, 8K tokens/นาที และ 200K tokens/วัน ต่อโมเดล
+(เกินโควตาจะเห็น `LLM_RATE_LIMIT` — รอสักครู่หรือเลือกโมเดลอื่น)
+Claude API (`anthropic`) เสียค่าใช้จ่าย จึงไม่ถูกเลือกอัตโนมัติ — ใช้ได้เฉพาะเมื่อตั้ง `LEGAL_AI_LLM_PROVIDER=anthropic` ตรงๆ
 
 **ห้ามใส่ API key ในไฟล์ใด ๆ ในโฟลเดอร์นี้** (โฟลเดอร์ซิงก์กับ OneDrive) — ตั้งเป็นตัวแปร environment เท่านั้น
 
@@ -51,7 +56,7 @@ python -m venv .venv
 
 เปิด <http://127.0.0.1:8000>
 
-ใช้ Claude API: `setx ANTHROPIC_API_KEY "sk-ant-..."` แล้วเปิด terminal ใหม่
+ใช้ Groq: สร้าง key ฟรีที่ <https://console.groq.com/keys> แล้ว `setx GROQ_API_KEY "gsk_..."` และเปิด terminal ใหม่
 ใช้ Ollama: `ollama pull qwen2.5:7b` — เครื่องต้องมี RAM/VRAM พอโหลดโมเดล (ถ้าไม่พอจะเห็น `LLM_OUT_OF_MEMORY`)
 
 ## ☁️ Deploy บน Vercel
@@ -59,27 +64,29 @@ python -m venv .venv
 Vercel ตรวจพบ FastAPI เองและเริ่มแอปจาก `app.py` — ไฟล์ที่เกี่ยวข้อง: `vercel.json` (ตั้ง `maxDuration`), `.vercelignore`
 
 1. ตั้ง Environment Variables ใน Vercel → Project → Settings → Environment Variables
-   - `ANTHROPIC_API_KEY` — **จำเป็น** (Vercel ไม่มี Ollama)
-   - `LEGAL_AI_LLM_PROVIDER` = `anthropic` — ให้ขึ้นข้อความ "ยังไม่ได้ตั้งค่า key" แทนการพยายามต่อ Ollama ถ้าลืมตั้ง key
+   - `GROQ_API_KEY` — **จำเป็น** (Vercel ไม่มี Ollama)
+   - `LEGAL_AI_LLM_PROVIDER` = `groq` — ให้ขึ้นข้อความ "ยังไม่ได้ตั้งค่า key" แทนการพยายามต่อ Ollama ถ้าลืมตั้ง key
 2. Deploy: `npx vercel` (ทดสอบ) แล้ว `npx vercel --prod`
-3. ตรวจหลัง deploy: เปิดหน้าเว็บ, `GET /api/status` ต้องได้ `"provider": "anthropic", "configured": true`, ลองถามหนึ่งคำถาม
+3. ตรวจหลัง deploy: เปิดหน้าเว็บ, `GET /api/status` ต้องได้ `"provider": "groq", "configured": true`, ลองถามหนึ่งคำถาม
 
 ข้อควรรู้เมื่อรันบน Vercel:
 
 - **ฐานข้อมูลเป็นแบบอ่านอย่างเดียว** — คัดลอก `data/legal_ai.db` ไปที่ `/tmp` ของแต่ละ instance ตอนเริ่ม
   (ล้างประวัติคำถามจากเครื่องพัฒนาออก) การแก้ตัวบท (`POST/PUT/DELETE /api/statutes`) และประวัติ (`/api/history`)
   จะตอบ `403` เพราะเว็บสาธารณะไม่มีระบบล็อกอิน และข้อมูลใน `/tmp` หายเมื่อ instance ปิด
-- **ค่าใช้จ่าย:** ทุกคนที่มีลิงก์ถามได้ และแต่ละคำถามเรียก Claude Opus 1–2 ครั้ง — แนะนำเปิด
-  Vercel Deployment Protection หรือแชร์ลิงก์เฉพาะคนที่ต้องการ และตั้งวงเงินใน Anthropic Console
+- **โควตา:** ทุกคนที่มีลิงก์ถามได้ และแต่ละคำถามเรียก Groq 1–2 ครั้ง ใช้โควตาฟรีร่วมกันทั้งเว็บ —
+  ถ้าคนใช้มากจะเจอ `LLM_RATE_LIMIT` บ่อย แนะนำแชร์ลิงก์เฉพาะคนที่ต้องการ
 - **เวลาตอบ:** ตั้ง `maxDuration` ไว้ 300 วินาที (คำถามที่ต้องถามซ้ำอาจใช้เวลาเกิน 60 วินาที)
-  ถ้าแผน Vercel ของคุณจำกัดต่ำกว่านี้ ให้ลดค่าใน `vercel.json` หรือ `LEGAL_AI_CLAUDE_EFFORT=medium`
+  ถ้าแผน Vercel ของคุณจำกัดต่ำกว่านี้ ให้ลดค่าใน `vercel.json`
 
 ## ⚙️ ตัวแปร environment
 
 | ตัวแปร | ค่าเริ่มต้น | ใช้ทำอะไร |
 |---|---|---|
-| `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` | — | ใช้ Claude API |
-| `LEGAL_AI_LLM_PROVIDER` | `auto` | `auto` / `anthropic` / `ollama` |
+| `GROQ_API_KEY` | — | ใช้ Groq (ฟรีภายใต้โควตา) |
+| `LEGAL_AI_LLM_PROVIDER` | `auto` | `auto` / `groq` / `ollama` (`anthropic` = Claude แบบเสียเงิน ต้องตั้งเอง) |
+| `LEGAL_AI_GROQ_MODEL` | `openai/gpt-oss-120b` | โมเดล Groq เริ่มต้น |
+| `LEGAL_AI_GROQ_MAX_TOKENS` | `4096` | เพดาน tokens ของคำตอบ Groq |
 | `LEGAL_AI_CLAUDE_MODEL` | `claude-opus-5-5` | โมเดล Claude (โหมดตอบคำถาม) |
 | `LEGAL_AI_CLAUDE_MODEL_SUMMARY` | ค่าเดียวกับ `LEGAL_AI_CLAUDE_MODEL` | โมเดล Claude โหมดสรุป/อธิบาย |
 | `LEGAL_AI_CLAUDE_EFFORT` | `high` | ระดับ effort ของ Claude (โหมดตอบคำถาม) |
@@ -103,7 +110,8 @@ Vercel ตรวจพบ FastAPI เองและเริ่มแอปจ�
 |---|---|
 | `app.py` | FastAPI — ทุก endpoint, ให้บริการหน้าเว็บ และเป็นจุดเริ่มแอปบน Vercel |
 | `legal_engine/qa.py` | ถาม-ตอบ ตรวจอ้างอิงและความครบถ้วน |
-| `legal_engine/claude_llm.py` | เชื่อมต่อ Claude API |
+| `legal_engine/groq_llm.py` | เชื่อมต่อ Groq และรายการโมเดลที่เลือกได้ |
+| `legal_engine/claude_llm.py` | เชื่อมต่อ Claude API (เสียเงิน ไม่ใช้โดยอัตโนมัติ) และ JSON schema ของคำตอบ |
 | `legal_engine/hybrid_retriever.py` | ค้นหาตัวบท |
 | `legal_engine/database.py` | ฐานข้อมูล SQLite |
 | `ingest_pdf.py`, `legal_engine/pdf_extract.py` | นำเข้าตัวบทจาก PDF |

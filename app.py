@@ -26,6 +26,7 @@ if os.environ.get("VERCEL"):
 
 from legal_engine import claude_llm
 from legal_engine import database as db
+from legal_engine import groq_llm
 from legal_engine import qa as qa_module
 from legal_engine.hybrid_retriever import HybridLegalRetriever
 from legal_engine.qa import LegalQA
@@ -67,6 +68,8 @@ class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
     # auto = สรุปเมื่อคำถามมีคำว่า สรุป/อธิบาย/ขยายความ, นอกนั้นตอบคำถาม
     mode: str = Field("auto", pattern=r"^(auto|answer|summary)$")
+    # โมเดล Groq ที่ผู้ใช้เลือก (ใช้เมื่อ provider = groq; ว่าง = ค่าเริ่มต้น)
+    model: Optional[str] = Field(None, max_length=64)
 
 class StatuteCreate(BaseModel):
     id: str = Field(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_\-]+$")
@@ -99,7 +102,9 @@ def ask_question(req: AskRequest):
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="กรุณาระบุคำถาม")
-    result = qa.ask(question, mode=req.mode)
+    if req.model and qa_module.active_provider() == "groq" and req.model not in groq_llm.GROQ_MODELS:
+        raise HTTPException(status_code=400, detail="โมเดลนี้ไม่อยู่ในรายการที่เลือกได้")
+    result = qa.ask(question, mode=req.mode, model=req.model or "")
     # ผลการเรียกจริงคือสัญญาณสุขภาพที่เชื่อถือได้ที่สุด
     if result["status"] == "LLM_ERROR":
         _set_health(False, result.get("error_code"), result.get("error", ""), source="ask")
@@ -169,6 +174,12 @@ def get_status(probe: bool = Query(False, description="ทดสอบโมเ�
     if provider == "anthropic":
         # ไม่ probe Claude (เสียค่าใช้จ่าย) — สุขภาพมาจากผลการถามจริงครั้งล่าสุด
         llm["configured"] = claude_llm.credentials_configured()
+        if not llm["configured"]:
+            _set_health(False, "LLM_AUTH", qa_module.LLM_ERROR_MESSAGES["LLM_AUTH"], source="config")
+    elif provider == "groq":
+        # ไม่ probe (กินโควตาฟรี) — สุขภาพมาจากผลการถามจริงครั้งล่าสุด
+        llm["configured"] = groq_llm.credentials_configured()
+        llm["models"] = groq_llm.model_options()
         if not llm["configured"]:
             _set_health(False, "LLM_AUTH", qa_module.LLM_ERROR_MESSAGES["LLM_AUTH"], source="config")
     else:
