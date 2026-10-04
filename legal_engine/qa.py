@@ -165,27 +165,90 @@ SHORT_SUMMARY_FEEDBACK = ("ผู้ใช้ขอแบบสั้น: summar
                           "example ไม่เกิน 2 ประโยค, notes ไม่เกิน 1 ข้อ")
 
 
-def _explicit_sections(question: str) -> List[Dict[str, Any]]:
-    """มาตราที่ผู้ถามระบุเลขมา เช่น '345', 'มาตรา 420', 'ม.193/30', 'บท 251' (ป.พ.พ.)"""
-    found = []
-    seen_ids = set()
+def _section_refs(question: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    มาตราที่ผู้ถามระบุเลขมา เช่น '345', 'มาตรา 420', 'ม.193/30', 'บท 251' (ป.พ.พ.)
+    คืน (มาตราที่มีในฐานข้อมูล, ป้ายของเลขมาตราที่ไม่มีในฐานข้อมูล เช่น "มาตรา 9999")
+    """
+    found, missing = [], []
+    seen = set()
 
-    def add_num(raw_num: str):
-        num = re.sub(r"\s+", "", raw_num.translate(_THAI_DIGITS)).replace("/", "-")
-        st = db.get_statute(f"CCC-{num}")
-        if st and st["id"] not in seen_ids:
-            seen_ids.add(st["id"])
+    def add_num(raw_num: str, prefixed: bool):
+        num = re.sub(r"\s+", "", raw_num.translate(_THAI_DIGITS))
+        if num in seen:
+            return
+        seen.add(num)
+        st = db.get_statute(f"CCC-{num.replace('/', '-')}")
+        if st:
             found.append(st)
+        elif prefixed:   # เลขเปล่าๆ เช่น "2000 บาท..." ไม่ใช่การอ้างมาตรา
+            missing.append(f"มาตรา {num}")
 
     for m in _QUESTION_SECTION_RE.finditer(question):
-        add_num(m.group(1))
+        add_num(m.group(1), prefixed=True)
 
     # เลขเดี่ยวๆ ที่ขึ้นต้นคำถาม เช่น "345 สรุปให้สั้น"
     lead = re.match(r"^\s*([0-9๐-๙]+(?:\s*/\s*[0-9๐-๙]+)?)(?:\s|$|,|และ|ถึง|-)", question)
     if lead:
-        add_num(lead.group(1))
+        add_num(lead.group(1), prefixed=False)
 
-    return found
+    return found, missing
+
+
+def _explicit_sections(question: str) -> List[Dict[str, Any]]:
+    return _section_refs(question)[0]
+
+
+# ---------------- คำถามที่ตอบจากฐานข้อมูลได้ตรงๆ (ไม่ใช้ AI — ฟรี ทันที และตรงตัวบท 100%) ----------------
+# ใช้เมื่อคำถามถามแค่ "ตัวบทว่าอย่างไร / อยู่หมวดไหน / ยกเลิกหรือยัง" — ถ้าถามอย่างอื่นปนมาด้วยให้ AI ตอบ
+_LOOKUP_TEXT_RE = re.compile(
+    r"บัญญัติ(?:ไว้)?(?:ว่า)?\s*(?:อย่างไร|ยังไง|ไง|อะไร)|ว่า(?:ไว้)?(?:ว่า)?\s*(?:อย่างไร|ยังไง|ไง)|"
+    r"เขียน(?:ไว้)?ว่า\s*(?:อย่างไร|ยังไง|อะไร)|(?:ขอ|ดู|แสดง|อ่าน)\s*(?:ตัวบท|ข้อความ)|ตัวบท(?:เต็ม)?(?:ของ)?\s*(?:มาตรา|ม\.)")
+_LOOKUP_WHERE_RE = re.compile(
+    r"อยู่(?:ใน|ที่)?\s*(?:หมวด|ลักษณะ|บรรพ|ส่วน|เรื่อง)?\s*(?:ไหน|อะไร|ใด)|(?:หมวด|ลักษณะ|บรรพ)\s*(?:ไหน|อะไร|ใด)|"
+    r"หน้า\s*(?:ไหน|อะไร|ที่เท่าไ|เท่าไ)")
+_LOOKUP_STATUS_RE = re.compile(
+    r"(?:ถูก)?ยกเลิก(?:แล้ว)?\s*(?:หรือ)?\s*(?:ยัง|ไหม|มั้ย|หรือไม่|หรือเปล่า|แล้วหรือ)|"
+    r"ยัง(?:ใช้|มีผล)(?:บังคับ)?(?:ใช้)?(?:อยู่)?\s*(?:ไหม|มั้ย|หรือไม่|หรือเปล่า)")
+# คำที่บอกว่าผู้ถามต้องการมากกว่าตัวบท/ข้อมูลมาตรา (เช่น ปรับใช้กับข้อเท็จจริง เปรียบเทียบ สรุป)
+_NEEDS_AI_RE = re.compile(r"สรุป|อธิบาย|ขยายความ|ต่างกัน|เปรียบเทียบ|ตัวอย่าง|ถ้า|กรณี|องค์ประกอบ|ใช้กับ|ได้ไหม|ได้หรือไม่|ต้อง")
+LOOKUP_MAX_QUESTION_CHARS = 60
+
+
+def _lookup_kind(question: str, explicit: List[Dict[str, Any]], missing: List[str]) -> str:
+    """ประเภทคำถามที่ตอบจากฐานข้อมูลได้เลย: "missing" / "where" / "status" / "text" หรือ "" = ส่งให้ AI"""
+    if not explicit and missing:
+        return "missing"
+    if not explicit or len(question) > LOOKUP_MAX_QUESTION_CHARS or _NEEDS_AI_RE.search(question):
+        return ""
+    for kind, pattern in (("where", _LOOKUP_WHERE_RE), ("status", _LOOKUP_STATUS_RE), ("text", _LOOKUP_TEXT_RE)):
+        if pattern.search(question):
+            return kind
+    return ""
+
+
+def _location(s: Dict[str, Any]) -> str:
+    parts = [s.get("category"), s.get("book"), s.get("title")]
+    path = " › ".join(p for p in dict.fromkeys(parts) if p)
+    page = f" ({s['source']} หน้า {s['source_page']})" if s.get("source_page") else ""
+    return path + page
+
+
+def _lookup_answer(kind: str, explicit: List[Dict[str, Any]], missing: List[str]) -> str:
+    lines = []
+    for s in explicit:
+        repealed = s.get("status") == "repealed"
+        if kind == "where":
+            lines.append(f"{s['section']} อยู่ใน {_location(s)}")
+        elif kind == "status":
+            lines.append(f"{s['section']} " + ("ถูกยกเลิกแล้ว" if repealed else "ยังมีผลใช้บังคับ (ไม่ได้ถูกยกเลิก)")
+                         + f" — {_location(s)}")
+        else:  # text
+            head = f"{s['section']}" + (" (ยกเลิกแล้ว)" if repealed else "") + f" — {_location(s)}"
+            lines.append(f"{head}\n{s['content']}")
+    if missing:
+        lines.append(f"ไม่พบ {', '.join(missing)} ในคลัง (มีเฉพาะประมวลกฎหมายแพ่งและพาณิชย์)")
+    return "\n\n".join(lines)
 
 
 def _context(statutes: List[Dict[str, Any]]) -> str:
@@ -380,7 +443,15 @@ class LegalQA:
             model = ""
         if mode == "auto":
             mode = "summary" if _SUMMARY_RE.search(question) else "answer"
-        explicit = _explicit_sections(question)
+        explicit, missing = _section_refs(question)
+
+        lookup = _lookup_kind(question, explicit, missing) if mode == "answer" else ""
+        if lookup:
+            # ตอบจากฐานข้อมูลตรงๆ — ไม่เรียก AI (ไม่กินโควตา และไม่มีความเสี่ยงที่ AI จะแต่งข้อความ)
+            return {"question": question, "mode": "lookup", "lookup": lookup, "provider": "database", "model": "",
+                    "retrieved_statutes": explicit, "missing_sections": missing, "status": "DIRECT",
+                    "answer": _lookup_answer(lookup, explicit, missing), "citations": [], "guardrails": {}}
+
         hits = self.retriever.retrieve(question, top_k=TOP_K, min_score_threshold=MIN_SCORE)
         statutes, seen = [], set()
         pool_main = _summary_context(explicit) if explicit else []
@@ -393,7 +464,7 @@ class LegalQA:
         statutes = statutes[:SUMMARY_CONTEXT if mode == "summary" else TOP_K]
 
         base = {"question": question, "mode": mode, "provider": active_provider(), "model": active_model(mode, model),
-                "retrieved_statutes": statutes}
+                "retrieved_statutes": statutes, "missing_sections": missing}
         if not statutes:
             return {**base, "status": "ABSTAIN", "answer": "ไม่พบตัวบทที่เกี่ยวข้องในฐานข้อมูล จึงไม่ตอบเพื่อป้องกันความคลาดเคลื่อน",
                     "citations": [], "guardrails": {}}

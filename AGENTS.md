@@ -27,6 +27,7 @@ the Check Q&A tab (`/api/check-qa`, `/api/qa`), the guardrails explainer tab, th
 | 2026-10-04 | **No mock data.** Statute text comes only from a source document; answers only from the real Q&A pipeline; no hard-coded verdicts, scores or answers. |
 | 2026-10-04 | **Strict abstention & Neighboring context**: If any quote fails verification or a section is invented, AI is retried once with feedback; if it still fails, it must strictly ABSTAIN and not display any hallucinated answer (no yellow partial warning banner with false content). Retrieved statutes are enriched with the foundational section (e.g. ม.341 for หักกลบลบหนี้) and neighboring sections of the same chapter/part. Quotes are deduplicated before scoring. |
 | 2026-10-04 | **Free models only — the user does not want to pay.** Q&A uses **Groq** (free plan) when `GROQ_API_KEY` is set, otherwise Ollama `qwen2.5:7b`. Users pick the Groq model in the web UI: `openai/gpt-oss-120b` (default), `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`, each shown with a description. The paid Claude API is never chosen automatically (only with an explicit `LEGAL_AI_LLM_PROVIDER=anthropic`). Override with `LEGAL_AI_LLM_PROVIDER=auto\|groq\|ollama`. Supersedes the earlier Claude-first decision. |
+| 2026-10-04 | **Versions.** The production site is **v1** (git tag `v1.0` on `main`) and already works well — don't change it. Any further development is a **new version**: work on a branch (now `v2`), deploy only as a Vercel **preview** (`npx vercel deploy`, never `--prod`), and merge to `main` / deploy to production only when the user approves. |
 | 2026-10-04 | Fixes from the user's UI test report (error handling, health badge, mobile layout, search, accessibility) are implemented; the Knowledge Base tab is named **คลังตัวบทกฎหมาย** because only the civil code is complete. |
 
 ## Current state
@@ -93,7 +94,7 @@ user's go-ahead): `legal_engine/legal_reasoner.py`, `legal_engine/guardrails.py`
 2. Scratch and debug scripts go in your own temp directory, never the project root.
 3. Don't change the data contract or a user decision without the user.
 4. Before saying work is done, run:
-   - `python -m unittest discover -s tests` (126 tests; uses a temporary copy of the DB; live-AI
+   - `python -m unittest discover -s tests` (134 tests; uses a temporary copy of the DB; live-AI
      tests skip themselves with a reason when the model can't load)
    - `python tools/verify_sections.py` (must exit 0)
 

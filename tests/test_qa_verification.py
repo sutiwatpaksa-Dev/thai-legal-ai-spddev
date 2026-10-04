@@ -124,7 +124,7 @@ class TestAskStatuses(unittest.TestCase):
 
     def test_explicit_section_is_always_included(self):
         with mock.patch.object(qa_module, "_call_llm", return_value={"answer": "", "citations": []}) as m:
-            r = self.qa.ask("มาตรา 193/30 บัญญัติว่าอย่างไร")
+            r = self.qa.ask("มาตรา 193/30 อายุความกี่ปี")
         self.assertEqual(r["retrieved_statutes"][0]["id"], "CCC-193-30")
         self.assertTrue(m.called)
 

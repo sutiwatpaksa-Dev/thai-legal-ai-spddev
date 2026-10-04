@@ -366,6 +366,25 @@ function statuteList(statutes, opts = {}) {
 
 function renderAnswer(data) {
   const retrieved = data.retrieved_statutes || [];
+  const missing = (data.missing_sections || []).map(escapeHtml).join(", ");
+  const missingNote = missing && data.status !== "DIRECT"
+    ? `<p class="hint">ไม่พบ ${missing} ในคลัง (มีเฉพาะประมวลกฎหมายแพ่งและพาณิชย์) — คำตอบด้านล่างอิงเฉพาะมาตราที่พบ</p>` : "";
+
+  if (data.status === "DIRECT") {
+    // ตอบจากฐานข้อมูลตรงๆ (ตัวบท / ตำแหน่งในประมวล / สถานะยกเลิก) — ไม่ผ่าน AI
+    return `
+      ${banner("banner-verified", "📖", "ตอบจากตัวบทในคลังโดยตรง (ไม่ใช้ AI)",
+        "ข้อความและข้อมูลมาตรานำมาจากฐานข้อมูลตัวบทตรงตัว ไม่ได้ผ่านการตีความของ AI")}
+      <article class="glass-panel result-block">
+        <h2 class="result-label">คำตอบ <span class="model-tag">ฐานข้อมูลตัวบท</span></h2>
+        <div class="answer-text">${escapeHtml(data.answer)}</div>
+      </article>
+      ${retrieved.length && data.lookup !== "text" ? `
+      <details class="result-block">
+        <summary class="result-label">ตัวบทเต็ม (${retrieved.length} มาตรา)</summary>
+        ${statuteList(retrieved)}
+      </details>` : ""}`;
+  }
 
   if (data.status === "LLM_ERROR") {
     // AI ล้ม แต่การค้นหาตัวบทสำเร็จแล้ว — แสดงมาตราที่ค้นพบให้ผู้ใช้อ่านต่อได้ทันที
@@ -410,6 +429,7 @@ function renderAnswer(data) {
   return `
     ${banner(st.cls, st.icon, st.title, st.sub,
       `<div class="score-pill" title="สัดส่วนอ้างอิงที่ยกข้อความตรงกับตัวบทจริง">${data.faithfulness_score ?? 0}%</div>`)}
+    ${missingNote}
 
     ${data.answer ? `
     <article class="glass-panel result-block">

@@ -97,7 +97,7 @@ class TestSummaryMode(unittest.TestCase):
 
     def test_plain_question_stays_answer_mode(self):
         with mock.patch.object(qa_module, "_call_llm", return_value={"answer": "", "citations": []}) as m:
-            r = self.qa.ask("มาตรา 251 บัญญัติว่าอย่างไร")
+            r = self.qa.ask("มาตรา 251 ผู้ทรงบุริมสิทธิได้รับชำระหนี้ก่อนใคร")
         self.assertEqual(r["mode"], "answer")
         self.assertIs(m.call_args.kwargs["system_prompt"], qa_module.SYSTEM_PROMPT)
 
